@@ -1,0 +1,20 @@
+#{
+#  http_port 8080
+#  https_port 8081
+#}
+
+https://localhost {
+    # Enable this when you are using automatic certificate renewal.
+    # Requires a real domain
+    #tls {
+    #    on_demand
+    #}
+
+	reverse_proxy appmetadataui:8501 {
+	    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+	    header_down Strict-Transport-Security max-age=31536000;
+	}
+}
+http://localhost {
+	reverse_proxy stussermanagerdemo:8501
+}

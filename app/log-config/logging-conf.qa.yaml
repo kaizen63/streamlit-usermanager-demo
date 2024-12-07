@@ -1,0 +1,76 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  simple:
+    format: '%(asctime)s.%(msecs)03d+00:00 %(levelname)s - %(message)s'
+    #format: '%(asctime)s %(levelname)s - %(message)s'
+    datefmt: "%Y-%m-%dT%H:%M:%S"
+  ts_format:
+    format: '%(asctime)s.%(msecs)03d+00:00 %(levelname)s [%(name)s] [%(process)d] - %(message)s'
+    datefmt: "%Y-%m-%dT%H:%M:%S"
+  # Datadog does not like time zone information
+  datadog_format:
+    format: '%(asctime)s.%(msecs)03d+00:00 %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [%(process)d] - %(message)s'
+    datefmt: "%Y-%m-%dT%H:%M:%S"
+  debug_format:
+    format: '%(asctime)s.%(msecs)03d+00:00 %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] - %(message)s'
+    datefmt: "%Y-%m-%dT%H:%M:%S"
+
+  json_format:
+    (): setup_logging.MyJSONFormatter
+    fmt_keys:
+      level: levelname
+      message: message
+      timestamp: timestamp
+      logger: name
+      module: module
+      function: funcName
+      line: lineno
+      thread_name: threadName
+
+handlers:
+  stdout:
+    class: logging.StreamHandler
+    formatter: datadog_format
+    stream: ext://sys.stdout
+  logfile:
+    class: logging.FileHandler
+    formatter: ts_format
+    filename: logs/metadata_ui.log
+    mode: w
+  json_logfile:
+    class: logging.FileHandler
+    formatter: json_format
+    filename: logs/metadata_ui.jsonl
+    mode: w
+  json_stdout:
+    class: logging.StreamHandler
+    formatter: json_format
+    stream: ext://sys.stdout
+  rotatinglogfile:
+    class: logging.handlers.RotatingFileHandler
+    formatter: ts_format
+    filename: logs/metadata_ui.log
+    maxBytes: 10485760
+    backupCount: 5
+loggers:
+  # only the main logger logs INFO, everything else only warnings and above
+  casbin:
+    level: WARNING
+    propagate: no
+    handlers: [ json_stdout ]
+  azure.core:
+    level: WARNING
+    propagate: no
+    handlers: [ json_stdout ]
+  azure.identity:
+    level: WARNING
+    propagate: no
+    handlers: [ json_stdout ]
+  sqlalchemy.engine.Engine:
+    level: INFO
+    propagate: no
+    handlers: [ json_logfile ]
+  root:
+    level: DEBUG
+    handlers: [ json_stdout ]
