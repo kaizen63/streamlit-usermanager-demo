@@ -1,4 +1,3 @@
-import os
 
 import streamlit as st
 from __init__ import __maintainer__, __title__, __version__

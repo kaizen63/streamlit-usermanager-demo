@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 from streamlit_ldap_authenticator import UserInfos
 from db import get_db
 
-from __init__ import __version__
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

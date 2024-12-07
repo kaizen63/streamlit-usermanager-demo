@@ -1,5 +1,5 @@
 from participants import ParticipantType, ParticipantRelationType
-from participants import Participant, ParticipantCreate, ParticipantRepository
+from participants import ParticipantCreate, ParticipantRepository
 from sqlalchemy import Engine, text, Connection
 from sqlmodel import Session
 import logging

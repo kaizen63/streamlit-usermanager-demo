@@ -18,7 +18,6 @@ from common import (
     get_st_current_user,
 )
 from config import settings
-from contact import send_email
 from participants import (
     Participant,
     ParticipantCreate,

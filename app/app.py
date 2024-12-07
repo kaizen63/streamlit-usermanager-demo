@@ -255,7 +255,7 @@ def render_sidebar(auth: Authenticate, user: dict[str, Any]) -> None:
     with st.sidebar:
         # st.sidebar.title(f"Welcome {user['displayName']}")
         # display_user = get_st_current_user()
-        st.write(f"### Welcome: " + get_st_current_user().display_name)
+        st.write("### Welcome: " + get_st_current_user().display_name)
         # auth.createLogoutForm(
         #    #            {"message": f"Welcome {display_user}"},
         #    {"title": {"text": f"Welcome {display_user}", "size": "small"}},
@@ -390,7 +390,7 @@ def configure_main_page() -> None:
     # https://streamlit-emoji-shortcodes-streamlit-app-gwckff.streamlit.app/
     page_icon: str = ":robot:"
     layout: LayoutType = "wide"
-    page_title: str = f"Streamlit UserManager Demo"
+    page_title: str = "Streamlit UserManager Demo"
     st.set_page_config(
         page_title=page_title,
         layout=layout,

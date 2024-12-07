@@ -1,18 +1,12 @@
 """Render homepage"""
 
 import logging
-import os
-import time
 from config import settings
 import pandas as pd
 import streamlit as st
 
 from enum import StrEnum
 
-from common import (
-    get_all_users,
-    is_administrator,
-)
 from dataframe_utilities import (
     calculate_height,
     render_filter_menu,
@@ -23,7 +17,6 @@ from dataframe_utilities import (
 from db import get_db
 from participants import Participant, ParticipantRepository
 
-from enum import StrEnum
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
