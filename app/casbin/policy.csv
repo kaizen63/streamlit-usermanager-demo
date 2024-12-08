@@ -1,0 +1,30 @@
+#
+# Grant access to objects:
+# p, role, object, action
+#
+# Grant roles to users
+# g, user, role
+
+
+p, USER_ADMINISTRATOR, users, read
+p, USER_ADMINISTRATOR, users, write
+p, USER_ADMINISTRATOR, users, create
+p, USER_ADMINISTRATOR, roles, read
+p, USER_ADMINISTRATOR, roles, write
+p, USER_ADMINISTRATOR, roles, create
+p, USER_ADMINISTRATOR, org_units, read
+p, USER_ADMINISTRATOR, org_units, write
+p, USER_ADMINISTRATOR, org_units, create
+
+p, USER_READ, users, read
+p, USER_WRITE, users, write
+p, ROLE_READ, roles, read
+p, ROLE_WRITE, roles, write
+p, ORG_UNIT_READ, org_units, read
+p, ORG_UNIT_WRITE, org_units, write
+
+# Just in case someone disables us in the database
+g, einstein, ADMINISTRATOR
+
+
+
