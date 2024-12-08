@@ -1,0 +1,48 @@
+#
+# Docker compose file to build and run niqappmetadata and the caddy reverse proxy
+# build requires the GITHUB_TOKEN env variable to be set.
+
+
+services:
+  stusermanagerdemo:
+    image: stusermanagerdemo:0.1.0
+    init: true
+    build:
+      dockerfile: Dockerfile
+      context: .
+
+
+    deploy:
+      mode: global
+      resources:
+        limits:
+          cpus: 1.0
+          memory: 128M
+
+    restart: unless-stopped
+    ports:
+      - "18501:8501"
+    environment:
+      ENV: prod
+      DB_ENGINE: "sqlite"
+      DB_USERNAME:
+      DB_SERVER:
+      DB_PORT:
+      DB_DATABASE: ":memory:"
+      DB_DRIVER:
+      DB_SCHEMA:
+      STREAMLIT_LOGGER_LEVEL: WARNING
+      STREAMLIT_LOGGER_MESSAGE_FORMAT: "%(asctime)s %(levelname)s [%(name)s] [%(process)d] - %(message)s"
+      STREAMLIT_SERVER_FOLDER_WATCH_BLACKLIST: '["/app/logs", "./logs"]'
+      STREAMLIT_SERVER_FILE_WATCHER_TYPE: none
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+      LOGGING_LOG_LEVEL: INFO
+      LOGGING_CONFIG: log-config/logging-conf.prod.yaml
+      LDAP_SERVER: "ldap.forumsys.com"
+
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./.env.override
+        required: false
+
