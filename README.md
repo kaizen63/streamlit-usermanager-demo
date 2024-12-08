@@ -23,7 +23,7 @@ docker compose down
 
 ## Authentication
 **NOT IMPLEMENTED / WORKING**
-Authentication is done via LDAP service. User has to enter his enterprise userid and password.
+Authentication is done via LDAP service. User has to enter his username and password.
 
 ## Authorization
 Menus and functions are restricted to various roles. The roles are defined in the database and assigned there either to users or org units.

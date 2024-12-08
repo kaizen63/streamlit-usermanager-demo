@@ -138,11 +138,11 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
     """Validate if the AD user is our list of participants
 
     UserInfos fields (from Active Directory):
-    sAMAccountName : Enterprise UserId
+    sAMAccountName : Username
     displayName: Last Name, First Name
     userPrincipalName: Email address of the user
     givenName: First Name
-    distinguishedName: Name with LDAP fields: "CN=Poitschke, Kai,OU=DE-Dusseldorf,OU=Europe,OU=Accounts,DC=enterprisenet,DC=org"
+    distinguishedName: Name with LDAP fields: "CN=Poitschke, Kai,OU=Engineering,OU=Europe,OU=Accounts,DC=example,DC=com"
     title: Job title
     manager: Job manager in format like distinguishedName
     """
