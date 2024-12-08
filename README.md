@@ -36,20 +36,32 @@ The configuration of who can do what is managed in policies stored in the file [
 ## Roles
 Following application specific roles are defined in the system:
 
-| Role                   | Description                                               |
-|------------------------|-----------------------------------------------------------|
-| ADMINISTRATOR          | Can do everything                                         |
-| USER_ADMINISTRATOR     | Can update users, roles and teams and their relationships |
-| PUBLIC                 | Can only use the contact form                             |
+| Role                  | Description                                                        |
+|-----------------------|--------------------------------------------------------------------|
+| ADMINISTRATOR         | Can do everything                                                  |
+| USER_ADMINISTRATOR    | Can create and edit users, roles and teams and their relationships |
+| USER_READ             | Can read users                                                     |
+| USER_WRITE            | Cand edit users                                                    |
+| ROLE_READ             | Can read roles                                                     |
+| ROLE_WRITE            | Can edit roles                                                     |
+| ORG_UNIT_READ         | Can read Org Units                                                 |
+| ORG_UNIT_WRITE        | Can edit Org Units                                                 |                                     
+| PUBLIC                | Can only use the contact form                                      |
  
 
 ### Access to main menu
 
-| Role                   | Home | Users | Roles | Orgs | 
-|------------------------|------|-------|-------|------|
-| ADMINISTRATOR          | yes  | yes   | yes   | yes  |
-| USER_ADMINISTRATOR     | no   | yes   | yes   | yes  |
-| PUBLIC                 | no   | no    | no    | no   |
+| Role               | Home  | Users | Roles | Orgs | 
+|--------------------|-------|-------|-------|------|
+| ADMINISTRATOR      | yes   | yes   | yes   | yes  |
+| USER_ADMINISTRATOR | no    | yes   | yes   | yes  |
+| USER_READ          | yes   | yes   | no    | no   |
+| USER_WRITE         | yes   | yes   | no    | no   |
+| ROLE_READ          | yes   | no    | yes   | no   |
+| ROLE_WRITE         | yes   | no    | yes   | no   |
+| ORG_UNIT_READ      | yes   | no    | no    | yes  |
+| ORG_UNIT_WRITE     | yes   | no    | no    | yes  |
+| PUBLIC             | no    | no    | no    | no   |
 
 
 ### Sidebar menu
