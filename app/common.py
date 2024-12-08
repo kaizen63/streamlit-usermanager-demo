@@ -22,9 +22,9 @@ class CurrentUser(BaseModel):
     display_name: str = Field(...)
     email: str = Field(...)
     title: str | None = Field(default=None)
-    roles: set[str] = Field(default_factory=set)
-    effective_roles: set[str] = Field(default_factory=set)
-    org_units: set[str] = Field(default_factory=set)
+    roles: set[str] = Field(default=set)
+    effective_roles: set[str] = Field(default=set)
+    org_units: set[str] = Field(default=set)
 
 
 class AppRoles(StrEnum):
