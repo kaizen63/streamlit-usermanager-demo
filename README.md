@@ -2,7 +2,7 @@
 
 Streamlit user interface to maintain Users, Groups, Org Units.
 
-## Quickstart using Dcoker
+## Quickstart using Docker
 
 Requires Docker installed on your computer.
 
