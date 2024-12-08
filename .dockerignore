@@ -94,3 +94,10 @@ app/.streamlit/secrets.toml
 app/logs/*
 app/rsa/*
 
+**/.DS_Store
+
+docker_build.sh
+docker_run.sh
+
+
+

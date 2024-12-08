@@ -242,11 +242,11 @@ def role_checkbox_callback(role, key) -> None:
         return
     enforcer = get_policy_enforcer()
     if st.session_state[key] is True:
-        current_user["effective_roles"].add(role)
-        enforcer.add_role_for_user(current_user["username"], role)
+        current_user.effective_roles.add(role)
+        enforcer.add_role_for_user(current_user.username, role)
     else:
-        current_user["effective_roles"].discard(role)
-        enforcer.delete_role_for_user(current_user["username"], role)
+        current_user.effective_roles.discard(role)
+        enforcer.delete_role_for_user(current_user.username, role)
     return
 
 
@@ -319,7 +319,6 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
         if connection:
             connection.engine.dispose()
             st.session_state["db_connection"] = None
-            st.session_state.schema = None
 
         st.cache_data.clear()
         for key in st.session_state.keys():
@@ -336,7 +335,7 @@ def render_login_screen(auth: Authenticate) -> dict[str, Any]:
     # user = auth.login(
     #    check_user,
     #    config={"align": "center"},
-    #    getLoginUserName=lambda user: user,
+    #    getLoginUserName=lambda u: u,
     # )
     user = dict()
     if not user:
@@ -471,8 +470,6 @@ def main() -> None:
     with Session(engine) as db:
 
         logger.debug("Connected to database")
-
-        st.session_state.schema = settings.DB_SCHEMA
 
         auth = get_authenticator()
         user = render_login_screen(auth)

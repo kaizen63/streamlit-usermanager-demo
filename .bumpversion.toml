@@ -42,3 +42,7 @@ filename = 'app/__init__.py'
 search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
 
+[[tool.bumpversion.files]]
+filename = "docker-compose.yml"
+search = "stusermanagerdemo:{current_version}"
+replace = "stusermanagerdemo:{new_version}"

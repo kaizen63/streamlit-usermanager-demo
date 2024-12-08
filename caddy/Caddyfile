@@ -10,11 +10,11 @@ https://localhost {
     #    on_demand
     #}
 
-	reverse_proxy appmetadataui:8501 {
+	reverse_proxy stusermanagerdemo:8501 {
 	    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 	    header_down Strict-Transport-Security max-age=31536000;
 	}
 }
 http://localhost {
-	reverse_proxy stussermanagerdemo:8501
+	reverse_proxy stusermanagerdemo:8501
 }

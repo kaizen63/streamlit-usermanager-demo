@@ -44,9 +44,57 @@ def create_participants(session: Session):
         user_admin_role = repo.add_role(
             "USER_ADMINISTRATOR",
             "User Administrator",
-            created_by=created_by,
             description="Can add users, orgs and roles",
+            created_by=created_by,
         )
+        app_roles: list[ParticipantCreate] = [
+            ParticipantCreate(
+                name="USER_READ",
+                display_name="User Read",
+                description="Can read users",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
+                name="USER_WRITE",
+                display_name="User Write",
+                description="Can edit user information",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
+                name="ROLE_READ",
+                display_name="Role Read",
+                description="Can read roles",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
+                name="ROLE_WRITE",
+                display_name="Role Write",
+                description="Can edit role information",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
+                name="ORG_UNIT_READ",
+                display_name="Org Unit Read",
+                description="Can read org units",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
+                name="ORG_UNIT_WRITE",
+                display_name="Org Unit Write",
+                description="Can edit org unit information",
+                participant_type=ParticipantType.ROLE,
+                created_by=created_by,
+            ),
+        ]
+        # app roles:
+        for app_role in app_roles:
+            _ = repo.create(app_role)
+
         # Org Units from ldap.forumsys.com
         org_units: list[ParticipantCreate] = [
             ParticipantCreate(
@@ -70,25 +118,19 @@ def create_participants(session: Session):
         scientists: list[ParticipantCreate] = [
             ParticipantCreate(
                 name="einstein",
-                display_name="Einstein",
-                participant_type=ParticipantType.HUMAN,
-                created_by=created_by,
-            ),
-            ParticipantCreate(
-                name="newton",
-                display_name="Newton",
+                display_name="Einstein, Albert",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),
             ParticipantCreate(
                 name="galileo",
-                display_name="Galileo",
+                display_name="Galilei, Galileo",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),
             ParticipantCreate(
                 name="tesla",
-                display_name="Tesla",
+                display_name="Tesla, Nicola",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),
@@ -124,20 +166,26 @@ def create_participants(session: Session):
 
         mathematicians: list[ParticipantCreate] = [
             ParticipantCreate(
+                name="newton",
+                display_name="Newton, Isaac",
+                participant_type=ParticipantType.HUMAN,
+                created_by=created_by,
+            ),
+            ParticipantCreate(
                 name="riemann",
-                display_name="Riemann",
+                display_name="Riemann, Bernhard",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),
             ParticipantCreate(
                 name="gauss",
-                display_name="Gauss",
+                display_name="Gauss, Carl Friedrich",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),
             ParticipantCreate(
                 name="euler",
-                display_name="Euler",
+                display_name="Euler, Leonhard",
                 participant_type=ParticipantType.HUMAN,
                 created_by=created_by,
             ),

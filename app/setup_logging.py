@@ -177,10 +177,12 @@ class MyJSONFormatter(logging.Formatter):
                 record.created, tz=dt.timezone.utc
             ).isoformat(),
         }
-        if st.session_state.get("username"):
+        if st.session_state.get("current_user"):
             user_info = {
-                "username": st.session_state["username"],
-                "user_display_name": st.session_state["user_display_name"],
+                "username": st.session_state.current_user["username"],
+                "user_display_name": st.session_state.current_user[
+                    "display_name"
+                ],
             }
             always_fields.update(user_info)
         logger_env = {

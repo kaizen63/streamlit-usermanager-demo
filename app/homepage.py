@@ -33,6 +33,7 @@ class ParticipantsTableHeader(StrEnum):
     CREATED_TIMESTAMP = "CreatedTime"
     UPDATED_BY = "UpdatedBy"
     UPDATED_TIMESTAMP = "UpdatedTime"
+    DESCRIPTION = "Description"
 
 
 def get_participants_data() -> pd.DataFrame | None:
@@ -58,6 +59,7 @@ def get_participants_data() -> pd.DataFrame | None:
                 "display_name",
                 "participant_type",
                 "email",
+                "description",
                 "state",
                 "created_by",
                 "created_timestamp",
@@ -77,6 +79,7 @@ def get_participants_data() -> pd.DataFrame | None:
             "display_name": ParticipantsTableHeader.DISPLAY_NAME,
             "participant_type": ParticipantsTableHeader.PARTICIPANT_TYPE,
             "email": ParticipantsTableHeader.EMAIL,
+            "description": ParticipantsTableHeader.DESCRIPTION,
             "state": ParticipantsTableHeader.STATE,
             "created_by": ParticipantsTableHeader.CREATED_BY,
             "created_timestamp": ParticipantsTableHeader.CREATED_TIMESTAMP,
@@ -103,12 +106,13 @@ def render_participants_table(title: str):
                 ParticipantsTableHeader.CREATED_TIMESTAMP,
                 ParticipantsTableHeader.UPDATED_TIMESTAMP,
             ],
+            key_prefix="homepage_pati_filter",
         )
-        df = render_sort_menu(df)
+        df = render_sort_menu(df, key_prefix="homepage_pati_sort")
         st.write(f"[{len(df)}]")
 
     displayed_df, page_size = paginate_df(
-        df, key_prefix="homepage_render_participants_table"
+        df, key_prefix="homepage_pati_paginate"
     )
 
     pagination = st.container(height=None)
@@ -132,6 +136,7 @@ def render_participants_table(title: str):
             ParticipantsTableHeader.DISPLAY_NAME,
             ParticipantsTableHeader.PARTICIPANT_TYPE,
             ParticipantsTableHeader.EMAIL,
+            ParticipantsTableHeader.DESCRIPTION,
             ParticipantsTableHeader.STATE,
             ParticipantsTableHeader.CREATED_BY,
             ParticipantsTableHeader.CREATED_TIMESTAMP,

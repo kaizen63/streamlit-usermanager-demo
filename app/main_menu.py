@@ -126,7 +126,7 @@ def render_main_menu() -> None:
         case "Debug":
             st.write("## Session State")
             session_state = dict(st.session_state.items())
-
+            del session_state["cookies"]
             st.json(
                 body=json.dumps(
                     session_state,

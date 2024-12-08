@@ -1,6 +1,25 @@
 # STREAMLIT USERMANAGER DEMO 
 
-Streamlit user interface to maintain the NIQ App Metadata.
+Streamlit user interface to maintain Users, Groups, Org Units.
+
+## Quickstart using Dcoker
+
+Requires Docker installed on your computer.
+
+To run the application on a Mac, copy the code below into a terminal window and execute:
+
+```bash
+git clone git@github.com:kaizen63/streamlit-usermanager-demo.git
+cd streamlit-usermanager-demo
+chmod +x *.sh
+./docker_run.sh
+```
+
+To stop and remove the container run:
+
+```bash
+docker compose down
+```
 
 ## Authentication
 **NOT IMPLEMENTED / WORKING**
@@ -54,7 +73,7 @@ Following query parameters are supported in the URL:
 | menu       | Selected item in the main menu                                                                                                  |
 | debug      | If set to 1, shows an additional Debug menu where you can see the session state variables                                       |
 | loglevel  | Set to DEBUG to enable the loglevel DEBUG. Usefull if you want to debug something in prod, where the default loglevel is INFO  |
-The parameters *app* and *menu* are always set. This enables you to send the link to the current app to your coworkers.
+
 
 ## RBAC Implementation
 
