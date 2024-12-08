@@ -162,9 +162,12 @@ To better illustrate the relationship the view [participants_relations](images/p
 ## Administrator view
 
 Users with the role ADMINISTRATOR can simulate the behaviour of the application for different roles to test the application.
-As Administrator you see the this [sidebar](images/administrator_sidebar.png)
-Initially all tickboxes are enabled. Switch off the tickboxes beside the role to remove the role from the current session.
-You will notice how the main menu will change. Also in some dialogs fields will be disabled when you do not have the appropriate role.
+
+As Administrator you see the this [sidebar](images/administrator_sidebar.jpg)
+
+Initially all roles are on. Switch off the tickboxes beside the role to remove the role from the current session.
+You will notice how the main menu will change. 
+Also in some dialogs fields will be disabled when you do not have the appropriate role.
 
 
 
