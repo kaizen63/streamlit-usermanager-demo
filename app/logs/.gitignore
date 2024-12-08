@@ -1,4 +1,4 @@
 # Ignore everything
 *
-# expect me
+# except me
 !.gitignore
