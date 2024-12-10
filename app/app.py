@@ -168,7 +168,7 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
             )
         elif current_user is not None and username != current_user.username:
             logger.debug(
-                f"check_user: prev user {current_user.get('username','unknown')!a} new user: {username!a}. Checking database"
+                f"check_user: prev user {current_user.get('username', 'unknown')!a} new user: {username!a}. Checking database"
             )
         with ParticipantRepository(get_db()) as pati_repo:
             pati = pati_repo.get_by_name(

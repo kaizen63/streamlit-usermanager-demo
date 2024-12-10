@@ -174,7 +174,7 @@ def render_contact_form():
 Click "reply" to answer the sender.
 
 Content:
-=== 
+===
 {message}
 ===
 """
