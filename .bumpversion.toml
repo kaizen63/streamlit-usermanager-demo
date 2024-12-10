@@ -1,7 +1,7 @@
 # https://pypi.org/project/bump-my-version/
 # https://callowayproject.github.io/bump-my-version/
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.1.0-final1"
 #parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.

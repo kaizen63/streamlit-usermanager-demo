@@ -5,7 +5,7 @@
 
 services:
   stusermanagerdemo:
-    image: stusermanagerdemo:0.1.0
+    image: stusermanagerdemo:0.1.0-final1
     init: true
     build:
       dockerfile: Dockerfile
