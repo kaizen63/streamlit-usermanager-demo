@@ -11,17 +11,14 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """Settings of the App, read either from environment or .env file"""
 
-    DB_USERNAME: Optional[str] = "ccoeservice"
+    DB_ENGINE: str = "sqlite"
+    DB_USERNAME: Optional[str] = ""
     DB_PASSWORD: Optional[str] = None
-    DB_SERVER: Optional[str] = "cloudcost.database.windows.net"
-    DB_PORT: Optional[int] = 1433
-    DB_DATABASE: Optional[str] = "CLOUD_COST_MGMT"
-    DB_DRIVER: str = (
-        "SQL Server"
-        if platform.system() == "Windows"
-        else "ODBC Driver 18 for SQL Server"
-    )
-    DB_SCHEMA: Optional[str] = "cloudcost_devx"
+    DB_SERVER: Optional[str] = ""
+    DB_PORT: Optional[int] = None
+    DB_DATABASE: Optional[str] = "demo.sqlite"
+    DB_DRIVER: Optional[str] = ""
+    DB_SCHEMA: Optional[str] = ""
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", env_file_encoding="utf-8"

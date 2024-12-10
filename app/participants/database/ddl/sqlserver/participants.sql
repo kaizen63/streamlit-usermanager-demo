@@ -2,9 +2,6 @@
 -- Table participants
 -- Short Name pati
 --
---alter user poitschkka01 with default_schema=dbo;
-alter user poitschkka01 with default_schema=cloudcost_dev;
-
 
 --drop table participants;
 
@@ -72,7 +69,7 @@ alter table participants add
   (state in (NULL, 'ACTIVE', 'TERMINATED'))
 ;
 
-grant select, insert, update on participants to ccoeservice;
+grant select, insert, update on participants to appuser;
 
 commit;
 

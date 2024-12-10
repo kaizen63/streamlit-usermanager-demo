@@ -71,7 +71,7 @@ alter table participant_relations add
 ;
 
 alter table participant_relations owner to cldcoe_admin;
-grant select, insert, update, delete on participant_relations to cldcoe_appuser;
+grant select, insert, update, delete on participant_relations to appuser;
 commit;
 
 --drop view participant_relations_v;
@@ -87,7 +87,6 @@ inner join participants p1 on (r.pati1_id = p1.id)
 inner join participants p2 on (r.pati2_id = p2.id)
 ;
 
-alter table participant_relations_v owner to cldcoe_admin;
 grant select on participant_relations_v to public;
 
 commit;

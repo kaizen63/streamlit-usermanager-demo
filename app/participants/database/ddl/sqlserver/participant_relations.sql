@@ -1,8 +1,6 @@
 --
 -- Create table participant_relations and view participant_relations_v
 
---alter user poitschkka01 with default_schema=dbo;
-alter user poitschkka01 with default_schema=cloudcost_dev;
 
 --
 -- PARTICIPANT_RELATIONS  (Table)
@@ -53,7 +51,7 @@ create index participant_relations_arg2_fk on participant_relations
 ;
 
 -- 
--- Foreign Key Constraints for Table SRE_UI_PARTICIPANT_RELATIONS
+-- Foreign Key Constraints for Table PARTICIPANT_RELATIONS
 -- 
 alter table participant_relations add
   constraint participant_relations_arg2_fk
@@ -71,7 +69,7 @@ alter table participant_relations add
   constraint participant_relations_chk check ( relation_type in ('GRANT', 'MEMBER OF', 'PROXY OF') )
 ;
 
-grant select, insert, update, delete on participant_relations to ccoeservice;
+grant select, insert, update, delete on participant_relations to appuser;
 
 drop view participant_relations_v;
 

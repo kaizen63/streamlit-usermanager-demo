@@ -66,8 +66,7 @@ alter table participants add
   (state in (NULL, 'ACTIVE', 'TERMINATED'))
 ;
 
-alter table participants owner to cldcoe_admin;
-grant select, insert, update on participants to cldcoe_appuser;
+grant select, insert, update on participants to appuser;
 
 commit;
 
