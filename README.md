@@ -2,6 +2,11 @@
 
 Streamlit user interface to maintain Users, Groups, Org Units.
 
+## Status
+
+[![Docker Image CI](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/docker-image.yml/badge.svg)](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/docker-image.yml)
+
+
 ## Quickstart using Docker
 
 Requires Docker installed on your computer.
