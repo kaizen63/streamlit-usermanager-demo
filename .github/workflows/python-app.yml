@@ -5,9 +5,21 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - 'main'
+      #- 'feature/**'
+
+    paths:
+      - 'app/**/*.py'
+      - 'Dockerfile'
+      - 'pyproject.toml'
+      - '!**/*.md'
+      - '!app/participants/tests/**'
+      - 'app/CHANGELOG.md'
+
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - 'main'
 
 permissions:
   contents: read
