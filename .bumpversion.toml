@@ -46,3 +46,8 @@ replace = '__version__ = "{new_version}"'
 filename = "docker-compose.yml"
 search = "stusermanagerdemo:{current_version}"
 replace = "stusermanagerdemo:{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "smoketest.py"
+search = "stusermanagerdemo:{current_version}"
+replace = "stusermanagerdemo:{new_version}"
