@@ -63,10 +63,9 @@ ignore_missing_imports = true
 minversion = "8.0"
 #addopts = "-ra -q -vvvv --color=yes --no-header --no-summary"
 addopts = "-ra -q -vvvv --color=yes --no-header"
-pythonpath = ["."]
+pythonpath = [".", "app"]
 testpaths = [
- #   "tests",
- "app/sre_participants/tests"
+ "app/participants/tests"
 ]
 [build-system]
 requires = ["poetry-core"]
