@@ -8,6 +8,7 @@ on:
 
     paths:
       - 'app/**/*.py'
+      - 'smoketest.py'
       - 'pyproject.toml'
       - '!Dockerfile'
       - '!docker-compose*.yaml'
@@ -29,3 +30,14 @@ jobs:
     - name: Build the Docker image
       # run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
       run: docker compose -f docker-compose.yml --progress=plain build
+
+
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.12"
+
+    - name: Smoketest App
+      run: |
+        python smoketest.py
