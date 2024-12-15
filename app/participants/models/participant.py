@@ -97,7 +97,7 @@ class ParticipantBase(SQLModel):
     )
     update_count: int = Field(
         default=0,
-        description="""Field to detect if a record was updated in the background. 
+        description="""Field to detect if a record was updated in the background.
 Use this before storing back the record. Must be used in combination with a row lock""",
     )
     created_by: str = Field(..., max_length=30)
@@ -291,7 +291,7 @@ class ParticipantUpdate(SQLModel):
     )
     update_count: Optional[int] = Field(
         default=None,
-        description="""Field to detect if a record was updated in the background. 
+        description="""Field to detect if a record was updated in the background.
     Use this before storing back the record. Must be used in combination with a row lock""",
     )
     updated_by: str = Field(..., max_length=30)

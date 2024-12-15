@@ -146,7 +146,8 @@ LOG_RECORD_BUILTIN_ATTRS = {
 class MyJSONFormatter(logging.Formatter):
     """
     Custom formatter to format the log records as JSON.
-    Is reading environment variables starting with LOGGER_ and adds them to the log but removing LOGGER_ and lower casing the name.
+    Is reading environment variables starting with LOGGER_ and adds them to the log but removing LOGGER_ and
+    lower casing the name.
     Examples:
         - LOGGER_APPLICATIONNAME
         - LOGGER_SERVICE

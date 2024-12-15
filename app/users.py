@@ -590,7 +590,8 @@ def save_user_changes(
         selected_org_units, user_org_units
     )
     logger.debug(
-        f"User: {selected_user.name} - new_org_units: {', '.join(new_org_units)} deleted org_units: {', '.join(deleted_org_units)}"
+        f"User: {selected_user.name} - new_org_units: {', '.join(new_org_units)} deleted org_units: "
+        + f"{', '.join(deleted_org_units)}"
     )
 
     user_proxy_of = [r.display_name for r in selected_user.proxy_of]
@@ -1066,7 +1067,7 @@ def send_user_registration_request(
 ):
     email_to = "support@acme.com"
     message = f"""
---- Message send via UI from {display_name} <{email}> 
+--- Message send via UI from {display_name} <{email}>
 Click "reply" to answer the user.
 
 USER REGISTRATION REQUEST FOR UI:

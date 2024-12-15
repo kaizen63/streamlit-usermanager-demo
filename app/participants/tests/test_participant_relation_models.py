@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import pytest
 from pydantic import ValidationError
 
@@ -7,7 +5,6 @@ from ..models import (
     ParticipantRelation,
     ParticipantRelationCreate,
     ParticipantRelationType,
-    ParticipantType,
 )
 
 

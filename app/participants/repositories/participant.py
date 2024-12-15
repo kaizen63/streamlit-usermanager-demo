@@ -305,7 +305,8 @@ class ParticipantRepository(RepositoryBase):
         # Collect  roles assigned to this participant
         # we start with a list and turn it into a set at the end
         logger.debug(
-            f"Participant: {participant.name}, num_roles: {len(participant.roles)}, num_orgs: {len(participant.org_units)}, num_proxy_of: {len(participant.proxy_of)}"
+            f"Participant: {participant.name}, num_roles: {len(participant.roles)}, "
+            + f"num_orgs: {len(participant.org_units)}, num_proxy_of: {len(participant.proxy_of)}"
         )
         effective_roles: set[str] = set()
         with ParticipantRelationRepository(self.session) as rel_repository:

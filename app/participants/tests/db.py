@@ -64,7 +64,8 @@ def get_url(db_engine: str | None = None) -> str:
 def create_db_engine(
     db_url: str, db_schema: str | None = None, echo: bool = False
 ) -> Any:
-    """Creates a context with an open SQLAlchemy session. Provide schema for postgresql to be passed as search path to postgresql"""
+    """Creates a context with an open SQLAlchemy session. Provide schema for postgresql
+    to be passed as search path to postgresql"""
     use_setinputsizes = None
     if db_url.startswith("postgres"):
         connect_args: dict[str, Any] = {

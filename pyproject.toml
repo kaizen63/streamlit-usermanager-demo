@@ -36,6 +36,7 @@ bump-my-version = "^0.28.1"
 ruff = "^0.8.2"
 coverage = "^7.5.0"
 sqlalchemy2-stubs = "^0.0.2a38"
+flake8 = "^7.1.1"
 
 [tool.black]
 line-length = 79

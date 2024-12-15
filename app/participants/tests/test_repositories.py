@@ -2,7 +2,7 @@ from typing import Literal, Optional, cast, Generator
 
 # import os
 import pytest
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete
 import os
 
 from app.participants import (
@@ -15,7 +15,6 @@ from app.participants import (
     ParticipantState,
     ParticipantType,
     ParticipantUpdate,
-    ParticipantNotFoundError,
     ParticipantRelation,
     IntegrityError,
 )
