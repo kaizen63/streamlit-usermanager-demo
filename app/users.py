@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import streamlit as st
 from common import (
@@ -38,7 +38,7 @@ def render_roles(
 ) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
-    users_roles: Optional[set[str]] = set(
+    users_roles: set[str] = set(
         [r.name for r in selected_user.roles if r.name != "PUBLIC"]
     )
     # Only administrator can assign another one the administrator roles
@@ -93,7 +93,7 @@ def render_org_units(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
     st.write(title)
-    selected_user_orgs: Optional[set[str]] = set(
+    selected_user_orgs: set[str] | None = set(
         [ou.display_name for ou in selected_user.org_units]
     )
     if not selected_user_orgs:
@@ -119,7 +119,7 @@ def render_proxy_of(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
     st.write(title)
-    selected_users_proxy_of: Optional[set[str]] = set(
+    selected_users_proxy_of: set[str] | None = set(
         [po.display_name for po in selected_user.proxy_of]
     )
     if not selected_users_proxy_of:
@@ -149,7 +149,7 @@ def render_proxies(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
     st.write(title)
-    selected_users_proxies: Optional[set[str]] = set(
+    selected_users_proxies: set[str] | None = set(
         [po.display_name for po in selected_user.proxies]
     )
     if not selected_users_proxies:
@@ -669,7 +669,7 @@ def render_create_user_form(title: str):
 
                 username = username.upper()
                 with ParticipantRepository(get_db()) as pati_repo:
-                    exists: Union[bool | str] = pati_repo.exists(
+                    exists: bool | str = pati_repo.exists(
                         "name", username, ParticipantType.HUMAN
                     )
                     if exists:
@@ -747,7 +747,7 @@ def init_session_state():
     set_roles_into_session_state(roles, "users_all_roles")
 
 
-def render_user_selectbox() -> Optional[Participant]:
+def render_user_selectbox() -> Participant | None:
 
     show_only_active = st.toggle(label="Show only active", value=True)
     if show_only_active:

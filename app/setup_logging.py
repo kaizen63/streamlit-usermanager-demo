@@ -9,7 +9,7 @@ import logging.config
 import os
 import time
 from pathlib import Path
-from typing import Union
+
 import streamlit as st
 
 # import coloredlogs
@@ -36,7 +36,7 @@ def dequote(s):
 
 
 def setup_logging(
-    default_path: Union[str, Path] = "logging-conf.yaml",
+    default_path: str | Path = "logging-conf.yaml",
     default_level: int = logging.INFO,
     env_key: str = "LOGGING_CONFIG",
     log_in_utc: bool = True,

@@ -15,9 +15,9 @@ create table participants
     hashed_password    VARCHAR(100),
     update_count       INTEGER  default 0                 not null,
     created_by         VARCHAR(30)                        not null,
-    created_datetime   DATETIME default CURRENT_TIMESTAMP not null,
+    created_timestamp   DATETIME default CURRENT_TIMESTAMP not null,
     updated_by         VARCHAR(30),
-    updated_datetime   DATETIME,
+    updated_timestamp   DATETIME,
     constraint participants_ak1
         unique (participant_type, name),
     constraint participants_ak2

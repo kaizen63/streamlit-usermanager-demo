@@ -19,9 +19,9 @@ create table participants
   -- maintenance columns
   update_count       int default 0 not null, -- Incremented by every update to let the frontend know something has changed in the db.
   created_by                     nvarchar(30) not null,
-  created_datetime               datetime default current_timestamp not null,
+  created_timestamp               datetime default current_timestamp not null,
   updated_by                     nvarchar(30)      null,
-  updated_datetime               datetime
+  updated_timestamp               datetime
 );
 
 --comment on table participants is

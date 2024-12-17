@@ -20,9 +20,9 @@ create table participants
   -- maintenance columns
   update_count       int default 0 not null, -- Incremented by every update to let the frontend know something has changed in the db.
   created_by                     varchar(30) not null,
-  created_datetime               timestamp with time zone default current_timestamp not null,
+  created_timestamp               timestamp with time zone default current_timestamp not null,
   updated_by                     varchar(30)      null,
-  updated_datetime               timestamp with time zone
+  updated_timestamp               timestamp with time zone
 );
 
 --comment on table participants is
