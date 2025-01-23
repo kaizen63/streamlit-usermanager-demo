@@ -107,7 +107,7 @@ class ParticipantRepository(RepositoryBase):
         try:
             result: ParticipantModel | None = self.session.exec(
                 select(ParticipantModel).where(
-                    ParticipantModel.name == display_name,
+                    ParticipantModel.display_name == display_name,
                     ParticipantModel.participant_type == participant_type,
                 )
             ).one_or_none()
