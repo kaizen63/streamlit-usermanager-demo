@@ -195,9 +195,8 @@ def get_participant_by_name(
 
 def compare_lists(a: list[str], b: list[str]) -> tuple[list[str], list[str]]:
     """Returns a - b and b - a"""
-    a_minus_b = [x for x in a if x not in b]
-    b_minus_a = [x for x in b if x not in a]
-    return a_minus_b, b_minus_a
+    a_set, b_set = set(a), set(b)
+    return list(a_set - b_set), list(b_set - a_set)
 
 
 def compute_effective_app_roles(
