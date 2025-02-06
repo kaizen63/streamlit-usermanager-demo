@@ -74,29 +74,19 @@ def get_st_current_user() -> CurrentUser | None:
     return CurrentUser(**st_current_user)
 
 
-def user_is_manager(user: Optional[UserInfos] = None):
-    """Checks if the user is a manager. If user is Null, uses st.session_state.login_user.title"""
-    lower_title: Optional[str] = None
+def user_is_manager(user: Optional[UserInfos] = None) -> bool:
+    """Checks if the user is a manager. If user is None, uses
+    st.session_state.current_user.title"""
+    if not user:
+        user = get_st_current_user()
 
-    if user:
-        lower_title = user["title"].lower()
-    else:
-        if current_user := get_st_current_user():
-            lower_title = current_user.title.lower()
-
-    if not lower_title:
+    if not user or not user.get("title"):
         return False
 
-    if (
-        "manager" in lower_title
-        or "director" in lower_title
-        or "vp" in lower_title
-        or "svp" in lower_title
-        or "chief"
-        in lower_title  # like Chief Executive Officer or Chief Technology Officer
-    ):
-        return True
-    return False
+    lower_title = user["title"].lower()
+    management_keywords = ("manager", "director", "vp", "svp", "chief")
+
+    return any(keyword in lower_title for keyword in management_keywords)
 
 
 def set_users_into_session_state(

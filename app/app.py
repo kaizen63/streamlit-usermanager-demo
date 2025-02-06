@@ -53,10 +53,6 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 LayoutType: TypeAlias = Literal["centered", "wide"]
 
 
-def check_user_title(conn: Optional[Connection], user: UserInfos):
-    return user_is_manager(user)
-
-
 def update_user_record(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> None:
@@ -205,7 +201,7 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
                 logger.debug(
                     f"check_user: {username=} not known. Checking job title"
                 )
-                if check_user_title(conn, user):
+                if user_is_manager(user):
                     current_user = CurrentUser(
                         username=username,
                         display_name=user["displayName"],
