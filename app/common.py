@@ -240,18 +240,20 @@ def check_access(username: str, object_: str, action: str) -> bool:
 
 def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
-    if not username:
-        username = st.session_state.get("username", None)
 
-    if (
-        "current_user" in st.session_state
-        and "ADMINISTRATOR" in st.session_state.current_user.get("roles", [])
+    username = username or st.session_state.get("username", None)
+
+    if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get(
+        "roles", []
     ):
         return True
-    if username:
-        enforcer = get_policy_enforcer()
-        if "ADMINISTRATOR" in enforcer.get_roles_for_user(username):
-            return True
+
+    if (
+        username
+        and "ADMINISTRATOR"
+        in get_policy_enforcer().get_roles_for_user(username)
+    ):
+        return True
     return False
 
 

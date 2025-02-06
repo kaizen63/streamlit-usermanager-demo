@@ -138,13 +138,15 @@ def render_pagination_menu(
 
     pagination_menu = st.columns((4, 1, 1))
     with pagination_menu[2]:
-        batch_size = st.selectbox(
+        batch_size_str = st.selectbox(
             "Page Size",
             options=["10", "25", "50", "100", "all"],
             key=key1,
         )
     with pagination_menu[1]:
-        batch_size = len(df) if batch_size == "all" else int(batch_size)
+        batch_size = (
+            len(df) if batch_size_str == "all" else int(batch_size_str)
+        )
         total_pages = (
             int(len(df) / batch_size) + 1
             if int(len(df) / batch_size) > 0 and len(df) > batch_size
