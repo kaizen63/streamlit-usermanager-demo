@@ -91,9 +91,10 @@ def setup_logging(
 
 def get_level(level: str) -> int:
     """Returns the log level number for a loglevel string string"""
-    level_name_mapping = logging.getLevelNamesMapping()
-    if level := level_name_mapping.get(level.upper()):
-        return level
+    if level is not None:
+        level_name_mapping = logging.getLevelNamesMapping()
+        if level := level_name_mapping.get(level.upper()):
+            return level
 
     raise LogLevelInvalidError(f"Not a valid log level: {level}")
 
