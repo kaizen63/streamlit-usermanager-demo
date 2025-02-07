@@ -169,7 +169,7 @@ def render_pagination_menu(
 
 def calculate_height(df: pd.DataFrame, page_size: int) -> int:
     """Calculates the height in pixel of the df. Note this is more an estimate."""
-    h = int(37 * min([page_size, len(df) + 1, 100]))
+    h = int(35.0 * min([page_size + 1, len(df) + 1])) + 30
     return h
 
 
