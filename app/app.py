@@ -151,13 +151,12 @@ def update_user_session_state(
 
     if pati.org_units:
         current_user["org_units"] = set([ou.name for ou in pati.org_units])
-
+    st_current_user: CurrentUser = CurrentUser.model_validate(current_user)
+    st_current_user.update_session_state()
     st.session_state["username"] = pati.name
     st.session_state["user_display_name"] = pati.display_name
     st.session_state["user_email"] = pati.email
-    # current_user["user_object"] = pati.model_dump()
     current_user["title"] = user.get("title") or "unknown"
-    st.session_state["current_user"] = current_user
 
 
 def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
@@ -243,9 +242,7 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
                         title=user.get("title", ""),
                         # title can be overwritten by &title
                     )
-                    st.session_state["current_user"] = (
-                        current_user.model_dump()
-                    )
+                    current_user.update_sesion_state()
                     st.session_state.username = username
                     st.session_state["must_register"] = True
                     logger.info(

@@ -3,7 +3,7 @@
 import logging
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional, Union, Iterable
+from typing import Optional, Union, Iterable
 
 import casbin
 import streamlit as st
@@ -20,9 +20,13 @@ class CurrentUser(BaseModel):
     display_name: str = Field(...)
     email: str | None = Field(...)
     title: str | None = Field(default=None)
-    roles: set[str] = Field(default_factory=lambda: set)
-    effective_roles: set[str] = Field(default_factory=lambda: set)
-    org_units: set[str] = Field(default_factory=lambda: set)
+    roles: set[str] = Field(default_factory=set)
+    effective_roles: set[str] = Field(default_factory=set)
+    org_units: set[str] = Field(default_factory=set)
+
+    def update_session_state(self):
+        """Updates the session state to reflect the current user"""
+        st.session_state["current_user"] = self.model_dump()
 
 
 class AppRoles(StrEnum):
