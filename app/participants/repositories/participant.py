@@ -78,18 +78,16 @@ class ParticipantRepository(RepositoryBase):
                 f"get_by_name: {participant_type=}, {name=} - {e}"
             )
             raise
-        else:
-            if result is None:
-                if raise_error_if_not_found:
-                    raise ParticipantNotFoundError
-                return None
 
-            pati = Participant(**result.model_dump())
-            if include_relations:
-                self.set_relations(pati, include_proxies)
-            return pati
-        finally:
-            pass
+        if result is None:
+            if raise_error_if_not_found:
+                raise ParticipantNotFoundError
+            return None
+
+        pati = Participant(**result.model_dump())
+        if include_relations:
+            self.set_relations(pati, include_proxies)
+        return pati
 
     def get_by_display_name(
         self,

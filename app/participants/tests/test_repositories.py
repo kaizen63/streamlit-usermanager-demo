@@ -102,6 +102,7 @@ def create_test_data(session: Session):
         name="POITSCHKKA02",
         display_name="Poitschke, Kai2",
         participant_type="HUMAN",
+        email="kai@acme.com",
         created_by="UNITTEST",
     )
 
@@ -228,6 +229,7 @@ def test_pati_repository_get_by_name() -> None:
         assert user_1.name == "POITSCHKKA02"
         assert user_1.display_name == "Poitschke, Kai2"
         assert user_1.participant_type == "HUMAN"
+        assert user_1.email == "kai@acme.com"
         repository.rollback()
 
 

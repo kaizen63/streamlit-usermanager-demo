@@ -85,31 +85,36 @@ def get_all_roles_of_roles(roles: set[str]) -> set[str]:
 
 def update_user_record(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
-) -> None:
-    """Compares user infos with db and updates the db if they are not equal"""
-    user_changes: dict[str, Any] = dict()
-    for pati_field, user_field in (
-        ("display_name", "displayName"),
-        ("email", "email"),
-    ):
-        if getattr(pati, pati_field) != user[user_field]:
-            user_changes[pati_field] = user[user_field]
+) -> Participant:
+    """Compares user infos with db and updates the db if they are not equal.
+    Returns the (modified) participant
+    """
 
-    if user_changes:
-        logger.info(
-            f"Updating user {user['displayName']} with data from ldap."
+    user_changes: dict[str, str | None] = {
+        "display_name": (
+            user["displayName"]
+            if pati.display_name != user["displayName"]
+            else None
+        ),
+        "email": (user["email"] if pati.email != user["email"] else None),
+    }
+    user_changes = {k: v for k, v in user_changes.items() if v}
+    if not user_changes:
+        return pati
+
+    logger.info(f"Updating user {user['displayName']} with data from ldap.")
+    user_changes["updated_by"] = "SYSTEM"
+    try:
+        update = ParticipantUpdate.model_validate(user_changes)
+        updated_participant = pati_repo.update(pati.id, update)
+    except Exception as e:
+        pati_repo.rollback()
+        logger.exception(
+            f"Cannot update userid: {pati.id=}, {pati.name=}, {pati.display_name=} {pati.participant_type=} {e=}"
         )
-        user_changes["updated_by"] = "SYSTEM"
-        try:
-            update = ParticipantUpdate.model_validate(user_changes)
-            _ = pati_repo.update(pati.id, update)
-        except Exception as e:
-            pati_repo.rollback()
-            logger.exception(
-                f"Cannot update userid: {pati.id=}, {pati.name=}, {pati.display_name=} {pati.participant_type=} {e=}"
-            )
-        else:
-            pati_repo.commit()
+    else:
+        pati_repo.commit()
+        return updated_participant if updated_participant else pati
 
 
 def add_roles_to_policy_enforcer(username, roles: Iterable[str]) -> None:
@@ -134,7 +139,7 @@ def update_user_session_state(
     current_user: dict[str, Any] = {
         "username": pati.name,
         "display_name": pati.display_name,
-        "email": pati.email,
+        "email": pati.email or user["email"],
     }
     if pati.roles or pati.org_units or pati.proxy_of:
         logger.debug(
@@ -210,7 +215,7 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
                 # if they are different and we did not fake our userid
                 current_user = get_st_current_user()
                 if current_user.username == user["uid"].upper():
-                    update_user_record(pati_repo, pati, user)
+                    pati = update_user_record(pati_repo, pati, user)
 
                 logger.info(
                     f"User {current_user.display_name} ({current_user.username}) logged in."
