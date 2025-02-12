@@ -8,7 +8,7 @@ from typing import Any, Optional, Union, Iterable
 import casbin
 import streamlit as st
 from config import settings
-from participants import Participant
+
 from pydantic import BaseModel, Field
 from streamlit_ldap_authenticator import UserInfos
 

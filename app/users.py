@@ -19,7 +19,6 @@ from participant_utilities import (
     get_participant_ids,
 )
 from config import settings
-from contact import send_email
 from participants import (
     Participant,
     ParticipantCreate,
@@ -948,67 +947,6 @@ def render_users() -> None:
         render_create_user_form("## Create User")
 
 
-def render_user_registration_form(title: str) -> None:
-    """Renders the roles, groups and proxies and handles the save button"""
-    st.write(title)
-    st.write(
-        ":red[You are not authorized to use this application, but you can register yourself below]"
-    )
-    with st.form(key="user_registration_form", clear_on_submit=False):
-        # We take the information from st.session_state.login_user because this user is not authorized in our system
-        if login_user := st.session_state.get("login_user", None):
-            account_name = st.text_input(
-                label="Enterprise ID",
-                value=login_user["sAMAccountName"].upper(),
-                disabled=True,  # We don't want the manager to create an account for somebody else.
-            )
-            display_name = st.text_input(
-                label="Display Name", value=login_user["displayName"]
-            )
-            email = st.text_input(
-                label="Email", value=login_user["userPrincipalName"]
-            )
-            job_title = st.text_input(
-                label="Job Title", value=login_user["title"]
-            )
-
-            st.divider()
-            conditions_accepted = st.checkbox(
-                label="I confirm that I'm a NielsenIQ Manager and authorized to access this application",
-                value=False,
-                key="users_user_terms_accepted_checkbox",
-            )
-            if st.form_submit_button(
-                "Register",
-                #                disabled=not st.session_state[
-                #                    "users_user_terms_accepted_checkbox"
-                #                ],
-            ):
-                if conditions_accepted:
-                    if not validate_email(email):
-                        st.error(f"Invalid Email: {email!a}")
-                        st.stop()
-                    if account_name != login_user["sAMAccountName"].upper():
-                        st.error(
-                            "You cannot create an account for someone else"
-                        )
-                        st.stop()
-                    if send_user_registration_request(
-                        account_name=account_name,
-                        display_name=display_name,
-                        email=email,
-                        job_title=job_title,
-                    ):
-                        st.success("Registration request send")
-                else:
-                    st.error("Please accept terms and conditions")
-                    st.stop()
-
-        else:
-            st.error("Oops! Something went wrong")
-            st.stop()
-
-
 def render_self_registration_form(title: str) -> None:
     """Self-service for managers to create themselves as users"""
     st.write(title)
@@ -1032,16 +970,11 @@ def render_self_registration_form(title: str) -> None:
 
             st.divider()
             conditions_accepted = st.checkbox(
-                label="I confirm that I'm a NielsenIQ TeachLead or Manager and authorized to access this application",
+                label="Accept terms and conditions",
                 value=False,
                 key="users_user_terms_accepted_checkbox",
             )
-            if st.form_submit_button(
-                "Register",
-                #                disabled=not st.session_state[
-                #                    "users_user_terms_accepted_checkbox"
-                #                ],
-            ):
+            if st.form_submit_button("Register"):
                 if conditions_accepted:
                     if not validate_email(email):
                         st.error(f"Invalid Email: {email!a}")
@@ -1072,7 +1005,7 @@ def render_self_registration_form(title: str) -> None:
                             add_roles(
                                 pati_repo,
                                 new_pati,
-                                [AppRoles.METADATA_MAINTAINER],
+                                [AppRoles.USER_READ],
                             )
 
                         except Exception as e:
@@ -1082,7 +1015,7 @@ def render_self_registration_form(title: str) -> None:
                         else:
                             enforcer = get_policy_enforcer()
                             enforcer.add_role_for_user(
-                                account_name, AppRoles.METADATA_MAINTAINER
+                                account_name, AppRoles.USER_READ
                             )
                             pati_repo.commit()
                             st.balloons()
@@ -1097,43 +1030,3 @@ def render_self_registration_form(title: str) -> None:
         else:
             st.error("Oops! Something went wrong")
             st.stop()
-
-
-def send_user_registration_request(
-    *, account_name: str, display_name: str, email: str, job_title: str
-) -> bool:
-    """Send the users registration request to us"""
-    email_to = "kai.poitschke@nielseniq.com"  # "cloudcoesreteam@nielseniq.com"
-    message = f"""
---- Message send via NIQ APP METADATA UI from {display_name} <{email}>
-Click "reply" to answer the user.
-
-USER REGISTRATION REQUEST FOR NIQ APP METADATA UI:
-
-Username: {account_name}
-Display Name: {display_name}
-Email: {email}
-Job Title: {job_title}
-
-"""
-    api_key = settings.SENDGRID_API_KEY
-    if api_key is None:
-        st.error(
-            "Configuration Error. Please set env variable SENDGRID_API_KEY"
-        )
-        st.stop()
-
-    status = send_email(
-        sendgrid_api_key=api_key,
-        mail_from="cloudcoenoreply@nha.nielseniq.com",
-        subject="NIQ APP METADATA UI: User Registration Request",
-        email_to=[email_to],
-        email_cc=[],
-        reply_to=email,
-        email_body=message,
-        content_type="text/plain",
-    )
-    if status != 202:
-        st.error(f"Oops! Something went wrong (email status: {status})")
-        return False
-    return True

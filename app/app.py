@@ -42,7 +42,7 @@ from db import (
     get_url,
     get_db,
 )
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 from initialize_tables import initialize_tables
 
@@ -114,12 +114,12 @@ def update_user_record(
 
 def add_roles_to_policy_enforcer(username, roles: Iterable[str]) -> None:
     """Adds the (effective) roles to cabin"""
-    e = st.session_state["policy_enforcer"]
-    if not e:
+    enforcer = st.session_state["policy_enforcer"]
+    if not enforcer:
         return
     for r in roles:
         logger.debug(f"{username=}: Add role {r} to policy enforcer")
-        e.add_role_for_user(username, r)
+        enforcer.add_role_for_user(username, r)
 
 
 def update_user_session_state(
@@ -144,10 +144,7 @@ def update_user_session_state(
         current_user["roles"] = pati_repo.compute_effective_roles(pati)
         current_user["effective_roles"] = get_all_roles_of_roles(
             current_user["roles"]
-        )  # compute_effective_app_roles(
-        #  current_user["roles"]
-        # )  # current_user["roles"].copy()
-        # Copy the effective roles into the casbin enforcer
+        )
     else:
         current_user["effective_roles"] = set()
         current_user["roles"] = set()
@@ -349,11 +346,6 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
         )
         st.session_state["username"] = ""
         st.session_state["user_display_name"] = ""
-        st.session_state["user_roles"] = set()
-        st.session_state["org_units"] = set()
-        st.session_state["users_all_users"] = dict()
-        st.session_state["users_all_org_units"] = dict()
-        st.session_state["users_all_roles"] = dict()
         st.session_state["current_user"] = dict()
         st.session_state["must_register"] = False
         st.session_state["policy_enforcer"] = None
@@ -382,7 +374,7 @@ def render_login_screen(auth: Authenticate) -> dict[str, Any]:
     #    config={"align": "center"},
     #    getLoginUserName=lambda u: u,
     # )
-    user = dict()
+    user: dict[str, Any] = dict()
     if not user:
         user = {
             "uid": "einstein",
