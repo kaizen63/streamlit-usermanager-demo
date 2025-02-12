@@ -21,23 +21,13 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # in real time. Equivalent to python -u: https://docs.python.org/3/using/cmdline.html#cmdoption-u
 ENV PYTHONUNBUFFERED 1
 
-# Install Poetry
-# https://python-poetry.org/docs/#installing-with-the-official-installer
-ENV POETRY_HOME=/opt/poetry
-ENV PATH=$POETRY_HOME/bin:$PATH
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    poetry config virtualenvs.create false
-
-ENV POETRY_ARGS_PROD="--no-ansi --no-root --without dev --no-interaction"
-ENV POETRY_ARGS_DEV="--no-ansi --no-root --no-interaction"
-ENV POETRY_ARGS=${POETRY_ARGS_PROD}
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV POETRY_VIRTUALENVS_OPTIONS_NO_SETUPTOOLS=true
+# Install uv
+RUN python3 -m pip install --upgrade pip && pip install uv
 ENV PIP_DEFAULT_TIMEOUT=100
 
 WORKDIR /app
 COPY ./pyproject.toml .
-RUN poetry install -v ${POETRY_ARGS}
+RUN uv pip install -r pyproject.toml --system
 
 # Now copy the app
 COPY ./app .
@@ -73,7 +63,7 @@ keyName = "authkey"
 ____HERE
 
 RUN chmod +x run.sh \
-    && rm -f poetry.lock \
+    && rm -f uv.lock \
     && rm -rf logs \
     && mkdir logs \
     && mkdir -p .rsa \
