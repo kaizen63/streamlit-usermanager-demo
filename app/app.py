@@ -156,7 +156,7 @@ def update_user_session_state(
 
     if pati.org_units:
         current_user["org_units"] = set([ou.name for ou in pati.org_units])
-    st_current_user: CurrentUser = CurrentUser.model_validate(current_user)
+    st_current_user: CurrentUser = CurrentUser(**current_user)
     st_current_user.update_session_state()
     st.session_state["username"] = pati.name
     st.session_state["user_display_name"] = pati.display_name
@@ -189,75 +189,80 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
 
     # logger.debug(f"Checking user {username}")
 
-    current_user = get_st_current_user()
+    current_user = CurrentUser.get_from_session_state()
+    if current_user and username == current_user.username:
+        return True
 
-    if current_user is None or username != current_user.username:
-        if current_user is None:
+    with ParticipantRepository(get_db()) as pati_repo:
+        pati = pati_repo.get_by_name(
+            username,
+            participant_type=ParticipantType.HUMAN,
+            include_relations=True,
+        )
+        if pati is not None:
             logger.debug(
-                "check_user: No current_user in session_state. Checking database"
+                f"check_user: {username} has {len(pati.roles)} roles and {len(pati.org_units)} org_units"
             )
-        elif current_user is not None and username != current_user.username:
+            update_user_session_state(pati_repo, pati, user)
+            # We update the database with email, display_name and distinguishedName with the LDAP values
+            # if they are different and we did not fake our userid
+            current_user = CurrentUser.get_from_session_state()
+            if current_user.username == user["uid"].upper():
+                pati = update_user_record(pati_repo, pati, user)
+
+            logger.info(
+                f"User {current_user.display_name} ({current_user.username}) logged in."
+            )
+            st_effective_roles = current_user.effective_roles
+
             logger.debug(
-                f"check_user: prev user {current_user.get('username', 'unknown')!a} new user: {username!a}. Checking database"
+                f"Participant {pati.name} has these effective roles in the session state: {', '.join(st_effective_roles)}"
             )
-        with ParticipantRepository(get_db()) as pati_repo:
-            pati = pati_repo.get_by_name(
-                username,
-                participant_type=ParticipantType.HUMAN,
-                include_relations=True,
+            add_roles_to_policy_enforcer(
+                pati.name,
+                st_effective_roles,
             )
-            if pati is not None:
-                logger.debug(
-                    f"check_user: {username} has {len(pati.roles)} roles and {len(pati.org_units)} org_units"
-                )
-                update_user_session_state(pati_repo, pati, user)
-                # We update the database with email, display_name and distinguishedName with the LDAP values
-                # if they are different and we did not fake our userid
-                current_user = get_st_current_user()
-                if current_user.username == user["uid"].upper():
-                    pati = update_user_record(pati_repo, pati, user)
-
-                logger.info(
-                    f"User {current_user.display_name} ({current_user.username}) logged in."
-                )
-                st_effective_roles = current_user.effective_roles
-
-                logger.debug(
-                    f"Participant {pati.name} has these effective roles in the session state: {', '.join(st_effective_roles)}"
-                )
-                add_roles_to_policy_enforcer(
-                    pati.name,
-                    st_effective_roles,
-                )
+            return True
+        else:
+            # Not a user in the database. Check the job title
+            logger.debug(
+                f"check_user: {username=} not known. Checking job title"
+            )
+            if user_is_manager(user):
+                initialize_manager_user(user, username)
                 return True
             else:
-                # Not a user in the database. Check the job title
-                logger.debug(
-                    f"check_user: {username=} not known. Checking job title"
-                )
-                if user_is_manager(user):
-                    current_user = CurrentUser(
-                        username=username,
-                        display_name=user["displayName"],
-                        email=user["email"],
-                        roles=set(),
-                        effective_roles={
-                            "PUBLIC",
-                        },
-                        title=user.get("title", ""),
-                        # title can be overwritten by &title
-                    )
-                    current_user.update_sesion_state()
-                    st.session_state.username = username
-                    st.session_state["must_register"] = True
-                    logger.info(
-                        f"User {current_user.display_name!a} ({current_user.username}) logged in."
-                    )
-                    return True
-                else:
-                    st.session_state["current_user"] = dict()
-                    return "You are not authorized to login"
-    return True
+                clear_user_session()
+                return "You are not authorized to login"
+
+
+
+def initialize_manager_user(user: UserInfos, username: str) -> None:
+    """Initialize a manager user session with limited roles."""
+    current_user: CurrentUser = CurrentUser(
+        username=username,
+        display_name=user["displayName"],
+        email=user["email"],
+        roles=set(),
+        effective_roles={
+            "PUBLIC",
+        },
+        title=user.get("title", ""),
+    )
+    current_user.update_session_state()
+    st.session_state.username = username
+    st.session_state["must_register"] = True
+    logger.info(
+        f"User {current_user.display_name!a} ({current_user.username}) logged in."
+    )
+
+
+def clear_user_session() -> None:
+    """Clear user session for unauthorized users."""
+    st.session_state["current_user"] = {}
+    st.session_state.username = ""
+    st.session_state["user_email"] = ""
+    st.session_state["user_display_name"] = ""
 
 
 def role_checkbox_callback(role, key) -> None:
@@ -266,7 +271,7 @@ def role_checkbox_callback(role, key) -> None:
         return
     # To for check_access to reread.
     check_access.clear()
-    if not (current_user := get_st_current_user()):
+    if not (current_user := CurrentUser.get_from_session_state()):
         return
     enforcer = get_policy_enforcer()
     if st.session_state[key] is True:
@@ -290,7 +295,7 @@ def render_sidebar(auth: Authenticate, user: dict[str, Any]) -> None:
         #    callback=signout_callback,
         # )
         st.divider()
-        current_user = get_st_current_user()
+        current_user = CurrentUser.get_from_session_state()
         if not current_user:
             return
         # Use a new policy enforcer, so the files are read again. We need to know

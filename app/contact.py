@@ -6,7 +6,7 @@ from http import HTTPStatus
 from typing import Iterable, Optional
 
 import streamlit as st
-from common import check_access
+from common import check_access, CurrentUser
 from config import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
@@ -138,7 +138,7 @@ def send_email(
 
 def render_contact_form():
     # st.write("## Send us a message")
-
+    current_user = CurrentUser.get_from_session_state()
     with st.form(key="contact_form"):
         email_to = st.text_input(
             label="Send To",
@@ -151,12 +151,12 @@ def render_contact_form():
         contact_name = st.text_input(
             label="Your Name:",
             placeholder="John Doe",
-            value=st.session_state.login_user["displayName"],
+            value=current_user.display_name,
         )
         contact_email = st.text_input(
             label="Your Email:",
             placeholder="john.doe@acme.com",
-            value=st.session_state.get("user_email", ""),
+            value=current_user.email,
         )
         # st.divider()
         subject = st.text_input("Subject:", max_chars=80)
@@ -164,9 +164,7 @@ def render_contact_form():
         if st.form_submit_button("Send"):
             if contact_email and contact_name and subject and message:
                 if not validate_email(contact_email):
-                    st.error(
-                        f"Invalid Email: {st.session_state.contact_email!a}"
-                    )
+                    st.error(f"Invalid Email: {contact_email!a}")
                 else:
                     email_to = email_to or "support@acme.com"
                     full_message = f"""

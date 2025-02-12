@@ -11,6 +11,7 @@ from common import (
     compare_lists,
     get_policy_enforcer,
     is_administrator,
+    CurrentUser,
 )
 from participant_utilities import (
     get_participant_by_display_name,
@@ -951,82 +952,73 @@ def render_self_registration_form(title: str) -> None:
     """Self-service for managers to create themselves as users"""
     st.write(title)
     st.write(":red[Please register yourself below]")
+    if not (current_user := CurrentUser.get_from_session_state()):
+        st.error("Oops! Something went wrong")
+        st.stop()
+
     with st.form(key="register_manager_form", clear_on_submit=False):
-        # We take the information from st.session_state.login_user because this user is not authorized in our system
-        if login_user := st.session_state.get("login_user", None):
-            account_name = st.text_input(
-                label="EnterpriseID",
-                value=login_user["sAMAccountName"].upper(),
-            )
-            display_name = st.text_input(
-                label="Display Name", value=login_user["displayName"]
-            )
-            email = st.text_input(
-                label="Email", value=login_user["userPrincipalName"]
-            )
-            job_title = st.text_input(
-                label="Job Title", value=login_user["title"]
-            )
+        # We take the information from st.session_stat  because this user is not authorized in our system
+        username = st.text_input(
+            label="EnterpriseID",
+            value=current_user.username,
+        )
+        display_name = st.text_input(
+            label="Display Name", value=current_user.display_name
+        )
+        email = st.text_input(label="Email", value=current_user.email)
+        job_title = st.text_input(label="Job Title", value=current_user.title)
 
-            st.divider()
-            conditions_accepted = st.checkbox(
-                label="Accept terms and conditions",
-                value=False,
-                key="users_user_terms_accepted_checkbox",
-            )
-            if st.form_submit_button("Register"):
-                if conditions_accepted:
-                    if not validate_email(email):
-                        st.error(f"Invalid Email: {email!a}")
-                    account_name = account_name.upper()
-                    if account_name != login_user[
-                        "sAMAccountName"
-                    ].upper() and not is_administrator(
-                        login_user["sAMAccountName"].upper()
-                    ):
-                        st.error(
-                            "You cannot create an account for someone else"
-                        )
-                        st.stop()
-
-                    create = ParticipantCreate(
-                        name=account_name,
-                        display_name=display_name,
-                        email=email,
-                        participant_type=ParticipantType.HUMAN,
-                        created_by=login_user["sAMAccountName"],
-                        description=job_title,
-                    )
-
-                    with ParticipantRepository(get_db()) as pati_repo:
-
-                        try:
-                            new_pati = pati_repo.create(create)
-                            add_roles(
-                                pati_repo,
-                                new_pati,
-                                [AppRoles.USER_READ],
-                            )
-
-                        except Exception as e:
-                            logger.exception(e)
-                            st.exception(e)
-                            raise
-                        else:
-                            enforcer = get_policy_enforcer()
-                            enforcer.add_role_for_user(
-                                account_name, AppRoles.USER_READ
-                            )
-                            pati_repo.commit()
-                            st.balloons()
-                            st.success(
-                                f"User {account_name} was successfully created. Please logout and login again!"
-                            )
-                        st.session_state["must_register"] = False
-                else:
-                    st.error("Please accept terms and conditions")
+        st.divider()
+        conditions_accepted = st.checkbox(
+            label="Accept terms and conditions",
+            value=False,
+            key="users_user_terms_accepted_checkbox",
+        )
+        if st.form_submit_button("Register"):
+            if conditions_accepted:
+                if not validate_email(email):
+                    st.error(f"Invalid Email: {email!a}")
+                username = username.upper()
+                if username != current_user.username and not is_administrator(
+                    current_user.username
+                ):
+                    st.error("You cannot create an account for someone else")
                     st.stop()
 
-        else:
-            st.error("Oops! Something went wrong")
-            st.stop()
+                create = ParticipantCreate(
+                    name=username,
+                    display_name=display_name,
+                    email=email,
+                    participant_type=ParticipantType.HUMAN,
+                    created_by=username,
+                    description=job_title,
+                )
+
+                with ParticipantRepository(get_db()) as pati_repo:
+
+                    try:
+                        new_pati = pati_repo.create(create)
+                        add_roles(
+                            pati_repo,
+                            new_pati,
+                            [AppRoles.USER_READ],
+                        )
+
+                    except Exception as e:
+                        logger.exception(e)
+                        st.exception(e)
+                        raise
+                    else:
+                        enforcer = get_policy_enforcer()
+                        enforcer.add_role_for_user(
+                            username, AppRoles.USER_READ
+                        )
+                        pati_repo.commit()
+                        st.balloons()
+                        st.success(
+                            f"User {username} was successfully created. Please logout and login again!"
+                        )
+                    st.session_state["must_register"] = False
+            else:
+                st.error("Please accept terms and conditions")
+                st.stop()

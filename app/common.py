@@ -9,24 +9,34 @@ import casbin
 import streamlit as st
 from config import settings
 
-from pydantic import BaseModel, Field
+# from pydantic import BaseModel, Field
+from dataclasses import dataclass, field, asdict
 from streamlit_ldap_authenticator import UserInfos
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-class CurrentUser(BaseModel):
-    username: str = Field(...)
-    display_name: str = Field(...)
-    email: str | None = Field(...)
-    title: str | None = Field(default=None)
-    roles: set[str] = Field(default_factory=set)
-    effective_roles: set[str] = Field(default_factory=set)
-    org_units: set[str] = Field(default_factory=set)
+@dataclass
+class CurrentUser:
+    username: str = field(default="")
+    display_name: str = field(default="")
+    email: str | None = field(default=None)
+    title: str | None = field(default=None)
+    roles: set[str] = field(default_factory=set)
+    effective_roles: set[str] = field(default_factory=set)
+    org_units: set[str] = field(default_factory=set)
 
-    def update_session_state(self):
+    def update_session_state(self) -> None:
         """Updates the session state to reflect the current user"""
-        st.session_state["current_user"] = self.model_dump()
+        st.session_state["current_user"] = asdict(self)
+        return
+
+    @staticmethod
+    def get_from_session_state() -> Optional["CurrentUser"]:
+        if "current_user" in st.session_state:
+            return CurrentUser(**st.session_state["current_user"])
+        else:
+            return CurrentUser()
 
 
 class AppRoles(StrEnum):
@@ -80,7 +90,7 @@ def user_is_manager(user: Optional[UserInfos] = None) -> bool:
     """Checks if the user is a manager. If user is None, uses
     st.session_state.current_user.title"""
     if not user:
-        current_user = get_st_current_user()
+        current_user = CurrentUser.get_from_session_state()
         title = current_user.title if current_user else None
     else:
         title = user.get("title", "")
