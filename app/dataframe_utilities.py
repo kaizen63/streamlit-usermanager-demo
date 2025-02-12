@@ -1,14 +1,19 @@
-""" Utilities for dataframes"""
+"""Utilities for dataframes"""
 
+import logging
 import pandas as pd
 import streamlit as st
-
 from who_called_me import who_called_me2
-from typing import Literal
+from typing import Literal, TypeAlias
 import re
+from config import settings
+
+LabelVisibilityType: TypeAlias = Literal["visible", "hidden", "collapsed"]
+
+logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def reformat_path(input_path: str):
+def reformat_path(input_path: str) -> str:
     """Replaces slash, backslash and colon with underscore"""
     return re.sub(r"[/\\:]", "_", input_path)
 
@@ -28,8 +33,8 @@ def render_filter_menu(
     *,
     exclude_columns: list[str] | None = None,
     label: str = "Filter By",
-    label_visibility: Literal["visible", "hidden", "collapsed"] = "visible",
-    key_prefix: str = None,
+    label_visibility: LabelVisibilityType = "visible",
+    key_prefix: str | None = None,
 ) -> pd.DataFrame:
     """Renders the filter menu and values menu. Returns the filtered dataframe if filtering is enabled.
     key_prefix must be a unique key for the filter. If not provided we create one.
@@ -71,25 +76,23 @@ def render_filter_menu(
 def render_sort_menu(
     df: pd.DataFrame,
     exclude_columns: list[str] | None = None,
-    key_prefix: str = None,
+    key_prefix: str | None = None,
 ) -> pd.DataFrame:
     """Renders the sort menu and returns a sorted df if sorting is enabled.
     key_prefix: Unique prefix for the elements in thi sort menu box"""
 
+    def generate_key(suffix: str) -> str:
+        if key_prefix:
+            return f"{key_prefix}_{suffix}"
+        filename, line_no, function = who_called_me2(1)
+        return f"{suffix}_{reformat_path(filename)}_{line_no}_{function}"
+
     sort_menu = st.columns(3)
     if exclude_columns is None:
         exclude_columns = []
-    if not key_prefix:
-        filename, line_no, function = who_called_me2()
-        key1 = (
-            f"filter_sort_radio_{reformat_path(filename)}_{line_no}_{function}"
-        )
-        key2 = f"sort_select_{reformat_path(filename)}_{line_no}_{function}"
-        key3 = f"sort_direction_{reformat_path(filename)}_{line_no}_{function}"
-    else:
-        key1 = f"{key_prefix}_1"
-        key2 = f"{key_prefix}_2"
-        key3 = f"{key_prefix}_3"
+    key1 = generate_key("filter_sort_radio")
+    key2 = generate_key("sort_select")
+    key3 = generate_key("sort_direction")
 
     columns = sorted([c for c in df.columns if c not in exclude_columns])
 
@@ -103,7 +106,7 @@ def render_sort_menu(
         )
     if sort == "Yes":
         with sort_menu[1]:
-            sort_field = st.selectbox("Sort By", options=columns, key=key2)
+            sort_column = st.selectbox("Sort By", options=columns, key=key2)
         with sort_menu[2]:
             sort_direction = st.radio(
                 "Direction",
@@ -111,47 +114,57 @@ def render_sort_menu(
                 horizontal=True,
                 key=key3,
             )
+        if pd.api.types.is_datetime64_any_dtype(df[sort_column]):
+            key_func = lambda col: col
+        else:
+            key_func = lambda col: col.str.lower()
+
         df = df.sort_values(
-            by=sort_field,
+            by=sort_column,
             ascending=sort_direction == "⬆️",
             ignore_index=True,
+            key=key_func,
+            na_position="last",
         )
     return df
 
 
+def calculate_total_pages(total_size: int, page_size: int) -> int:
+    """Calculates how many pages we have to display"""
+    return (total_size + page_size - 1) // page_size
+
+
 def render_pagination_menu(
-    df: pd.DataFrame, key_prefix: str = None
+    df: pd.DataFrame, key_prefix: str | None = None
 ) -> tuple[int, int]:
     """Renders the bottom menu with page count and batch size.
     Returns:
          current_page, batch_size
     """
-    filename, line_no, function = who_called_me2()
-    if not key_prefix:
-        key1 = (
-            f"pagination_select_{reformat_path(filename)}_{line_no}_{function}"
-        )
-        key2 = f"page_input_{reformat_path(filename)}_{line_no}_{function}"
-    else:
-        key1 = f"{key_prefix}_1"
-        key2 = f"{key_prefix}_2"
+
+    def generate_key(suffix: str) -> str:
+        if key_prefix:
+            return f"{key_prefix}_{suffix}"
+        filename, line_no, function = who_called_me2(1)
+        return f"{suffix}_{reformat_path(filename)}_{line_no}_{function}"
+
+    key1 = generate_key("pagination_select")
+    key2 = generate_key("page_input")
 
     pagination_menu = st.columns((4, 1, 1))
     with pagination_menu[2]:
-        batch_size_str = st.selectbox(
+        batch_size_selected: str = st.selectbox(
             "Page Size",
             options=["10", "25", "50", "100", "all"],
             key=key1,
         )
     with pagination_menu[1]:
-        batch_size = (
-            len(df) if batch_size_str == "all" else int(batch_size_str)
+        page_size: int = (
+            len(df)
+            if batch_size_selected == "all"
+            else int(batch_size_selected)
         )
-        total_pages = (
-            int(len(df) / batch_size) + 1
-            if int(len(df) / batch_size) > 0 and len(df) > batch_size
-            else 1
-        )
+        total_pages = calculate_total_pages(len(df), page_size)
 
         current_page = st.number_input(
             "Page",
@@ -164,12 +177,13 @@ def render_pagination_menu(
         st.markdown(
             f"Page **{current_page}** of **{total_pages}**",
         )
-    return current_page, batch_size
+    return current_page, page_size
 
 
 def calculate_height(df: pd.DataFrame, page_size: int) -> int:
     """Calculates the height in pixel of the df. Note this is more an estimate."""
     h = int(35.0 * min([page_size + 1, len(df) + 1])) + 30
+    # logger.debug(f"len(df)={len(df)}, {page_size=} -> {h=}")
     return h
 
 
