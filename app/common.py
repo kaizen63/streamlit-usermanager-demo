@@ -3,7 +3,7 @@
 import logging
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Iterable
 
 import casbin
 import streamlit as st
@@ -263,3 +263,22 @@ def get_maintainer(name: str | None) -> Optional[Participant]:
     if not name:
         return None
     return get_participant_by_name(name, ParticipantType.HUMAN)
+
+
+def filter_list(
+    items: Iterable[str],
+    exclude_keywords: list[str] | tuple[str, ...] | set[str],
+) -> list[str]:
+    """Returns the input list where none of the items has one with a keyword in it.
+    Example: input = ['SECRET_KEY', 'PASSWORD', 'DB_SERVER', 'DB_PORT']
+             exclude_keywords = ("KEY", "PASSWORD")
+             returns ['DB_SERVER', 'DB_PORT']
+    """
+    if not isinstance(exclude_keywords, (list, tuple, set)):
+        raise TypeError("exclude_keywords must be a list or tuple")
+
+    return [
+        item
+        for item in items
+        if not any(word in item for word in exclude_keywords)
+    ]

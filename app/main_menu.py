@@ -11,6 +11,7 @@ from org_units import render_org_units
 from roles import render_roles
 from streamlit_option_menu import option_menu
 from users import render_users
+from debug_page import render_debug_page
 
 # from streamlit_extras.bottom_container import bottom
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -46,7 +47,7 @@ def execute_menu_action(
         "Roles": render_roles,
         "Orgs": render_org_units,
         "About": render_about,
-        # "Debug": render_debug_page,
+        "Debug": render_debug_page,
     }
 
     if action := action_map.get(selected):
