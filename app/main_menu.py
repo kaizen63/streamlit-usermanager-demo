@@ -1,13 +1,11 @@
 """Display and handles the main menu"""
 
-import json
 import logging
-import os
 
 import homepage
 import streamlit as st
 from about import render_about
-from common import check_access, get_policy_enforcer, get_st_current_user
+from common import check_access
 from config import settings
 from org_units import render_org_units
 from roles import render_roles
@@ -25,118 +23,103 @@ def application_menu_callback(key: str):
         st.query_params["menu"] = st.session_state[key]
 
 
-def render_main_menu() -> None:
-    """Renders the main menu of the application"""
-    # icons: https://icons.getbootstrap.com/
-    debug_on: bool = st.query_params.get("debug", "0") == "1"
-    # For debugging. Disable in prod
-    title = st.query_params.get("title")
+def get_user_permissions(username: str) -> dict[str, bool]:
+    """Retrieve the user's permissions."""
+    return {
+        perm: check_access(username, resource, action)
+        for perm, (resource, action) in {
+            "read_users": ("users", "read"),
+            "read_roles": ("roles", "read"),
+            "read_orgs": ("org_units", "read"),
+        }.items()
+    }
 
-    enforcer = get_policy_enforcer()
 
-    if title:
-        st.session_state.current_user["title"] = title
-    current_user = get_st_current_user()
-    if not current_user:
-        return
-    username = current_user.username
-    current_user_roles = enforcer.get_roles_for_user(username)
-    logger.debug(
-        f'User {username}. current roles: {", ".join(current_user_roles)}, effective_roles={current_user.effective_roles}'
+def execute_menu_action(
+    selected: str,
+) -> None:
+    """Executes the action corresponding to the selected menu item."""
+    home_label = get_home_label()
+    action_map = {
+        home_label: homepage.render_homepage,
+        "Users": render_users,
+        "Roles": render_roles,
+        "Orgs": render_org_units,
+        "About": render_about,
+        # "Debug": render_debug_page,
+    }
+
+    if action := action_map.get(selected):
+        action()
+
+
+def get_home_label() -> str:
+    return (
+        f"Home[{st.session_state.env}]"
+        if st.session_state.get("env", "PROD") != "PROD"
+        else "Home"
     )
 
-    options = []
-    icons = []
-    home = "Home"
-    options.append(home)
-    icons.append("house")
 
-    if check_access(username, "users", "read"):
-        options.append("Users")
-        icons.append("people")
-    if check_access(username, "roles", "read"):
-        options.append("Roles")
-        icons.append("mortarboard")
-    if check_access(username, "org_units", "read"):
-        options.append("Orgs")
-        icons.append("building")
+def generate_menu_items(
+    permissions: dict[str, bool], debug_on: bool
+) -> tuple[list[str], list[str]]:
+    """Generate menu options and corresponding icons based on permissions."""
 
-    options.extend(["About"])
-    icons.extend(["info-circle"])
+    home_label = get_home_label()
 
-    if debug_on:
-        options.append("Debug")
-        icons.append("bug")
-        os.environ["POLICY_TTL"] = "0"
-        logger.info(f"Debug on: Set POLICY_TTL to: {settings.POLICY_TTL}")
-    else:
-        logger.debug(f"POLICY_TTL: {settings.POLICY_TTL}")
+    menu_items = [
+        (home_label, "house") if permissions["read_users"] else None,
+        ("Users", "people") if permissions["read_users"] else None,
+        ("Roles", "mortarboard") if permissions["read_roles"] else None,
+        ("Orgs", "building") if permissions["read_orgs"] else None,
+        ("About", "info-circle"),
+        ("Debug", "bug") if debug_on else None,
+    ]
 
-    manual_select = None
-    if menu := st.query_params.get("menu"):
-        try:
-            index = options.index(menu)
-        except ValueError:
-            index = 0
-            manual_select = 0
-    else:
-        index = 0
+    # Remove None values and unpack into separate lists
+    options, icons = zip(*[item for item in menu_items if item])
+
+    return list(options), list(icons)
+
+
+def render_main_menu() -> None:
+    """Renders the main menu of the application"""
+    debug_on = st.query_params.get("debug", "0") == "1"
+    title = st.query_params.get("title")
+
+    user = st.session_state["current_user"]
+    username = user["username"]
+    effective_roles = user["effective_roles"]
+
+    logger.debug(f"User {username}. Effective roles: {effective_roles}")
+
+    if title:
+        user["title"] = title
+
+    permissions = get_user_permissions(username)
+    logger.debug(f"User {username} has these permissions: {permissions}")
+    options, icons = generate_menu_items(permissions, debug_on)
+
+    # Determine menu selection
+    menu_selection = st.query_params.get("menu")
+    index = options.index(menu_selection) if menu_selection in options else 0
     st.query_params["menu"] = options[index]
-    # manual_select is overwriting the index
+
     selected = option_menu(
-        menu_title=None,  # "Main Menu",
+        menu_title=None,
         options=options,
         icons=icons,
         menu_icon="cast",
         orientation="horizontal",
         default_index=index,
         key="application_menu",
-        manual_select=manual_select,
+        manual_select=(
+            0 if menu_selection and menu_selection not in options else None
+        ),
         on_change=application_menu_callback,
     )
 
-    logger.debug(f"User {username} selected menu: {selected}")
-    match selected:
-        case _ if selected.startswith("Home"):
-            homepage.render_homepage()
-
-        case "Users":
-            if check_access(username, "users", "read"):
-                render_users()
-            else:
-                st.error("You are not authorized to access this page")
-                st.stop()
-        case "Roles":
-            if check_access(username, "roles", "read"):
-                render_roles()
-            else:
-                st.error("You are not authorized to access this page")
-                st.stop()
-
-        case "Orgs":
-            if check_access(username, "org_units", "read"):
-                render_org_units()
-            else:
-                st.error("You are not authorized to access this page")
-                st.stop()
-
-        case "About":
-            render_about()
-
-        case "Debug":
-            st.write("## Session State")
-            session_state = dict(st.session_state.items())
-            del session_state["cookies"]
-            st.json(
-                body=json.dumps(
-                    session_state,
-                    indent=4,
-                    sort_keys=True,
-                    ensure_ascii=False,
-                    default=str,
-                ),
-                expanded=False,
-            )
-
-        case _:
-            pass
+    logger.info(f"User {username} selected menu: {selected}")
+    # Execute the selected menu action
+    execute_menu_action(selected)
