@@ -1,4 +1,4 @@
-""" Functions called by other modules """
+"""Functions called by other modules"""
 
 import logging
 from enum import StrEnum
@@ -8,11 +8,9 @@ from typing import Any, Optional, Union, Iterable
 import casbin
 import streamlit as st
 from config import settings
-from participants import Participant, ParticipantRepository, ParticipantType
+from participants import Participant
 from pydantic import BaseModel, Field
 from streamlit_ldap_authenticator import UserInfos
-from db import get_db
-
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 class CurrentUser(BaseModel):
     username: str = Field(...)
     display_name: str = Field(...)
-    email: str = Field(...)
+    email: str | None = Field(...)
     title: str | None = Field(default=None)
     roles: set[str] = Field(default_factory=lambda: set)
     effective_roles: set[str] = Field(default_factory=lambda: set)
@@ -61,7 +59,7 @@ def dequote(s):
     """
     if s is None or not isinstance(s, str):
         return s
-    if (len(s) >= 2 and s[0] == s[-1]) and s.startswith(("'", '"')):
+    if (len(s) >= 2 and s[0] == s[-1]) and s[0] in ("'", '"'):
         return s[1:-1]
     return s
 
@@ -78,119 +76,16 @@ def user_is_manager(user: Optional[UserInfos] = None) -> bool:
     """Checks if the user is a manager. If user is None, uses
     st.session_state.current_user.title"""
     if not user:
-        user = get_st_current_user()
-
-    if not user or not user.get("title"):
+        current_user = get_st_current_user()
+        title = current_user.title if current_user else None
+    else:
+        title = user.get("title", "")
+    if not title:
         return False
-
-    lower_title = user["title"].lower()
+    lower_title = title.lower()
     management_keywords = ("manager", "director", "vp", "svp", "chief")
 
     return any(keyword in lower_title for keyword in management_keywords)
-
-
-def set_users_into_session_state(
-    users: list[Participant], state_variable: str
-) -> None:
-    """Store the id, name and description in st.session_state.users_all_users
-    Key is the description because that one is used in the select box"""
-    data: dict[str, dict[str, Any]] = {}
-    for u in users:
-        data[u.display_name] = {
-            "id": u.id,
-            "name": u.name,
-            "display_name": u.display_name,
-            "state": u.state,
-            "roles": [r.name for r in u.roles],
-            "org_units": [o.name for o in u.org_units],
-        }
-    st.session_state[state_variable] = data
-
-
-def set_org_units_into_session_state(
-    org_units: list[Participant], state_variable: str
-) -> None:
-    """Store the id, name and description in st.session_state.users_user
-    Key is the description because that one is used in the select box"""
-    data: dict[str, dict[str, Any]] = {}
-    for ou in org_units:
-        data[ou.display_name] = {
-            "id": ou.id,
-            "name": ou.name,
-            "display_name": ou.display_name,
-            "state": ou.state,
-        }
-    st.session_state[state_variable] = data
-
-
-def set_roles_into_session_state(
-    roles: list[Participant], state_variable: str
-) -> None:
-    """Store the id, name and description in st.session_state.users_user
-    Key is the description because that one is used in the select box"""
-    data: dict[str, dict[str, Any]] = {}
-    for r in roles:
-        data[r.name] = {
-            "id": r.id,
-            "name": r.name,
-            "display_name": r.display_name,
-            "state": r.state,
-        }
-    st.session_state[state_variable] = data
-
-
-@st.cache_data(ttl=600, show_spinner="Loading data...")
-def get_participants(
-    participant_type: str, only_active: bool
-) -> list[Participant]:
-    """Get a list of all participants"""
-    logger.debug(f"Get participants of type {participant_type} from database")
-    with ParticipantRepository(get_db()) as pati_repo:
-        users: list[Participant] = pati_repo.get_all(
-            participant_type, include_relations=False, only_active=only_active
-        )
-        return users
-
-
-@st.cache_data(ttl=600, show_spinner="Loading data...")
-def get_all_users(only_active: bool = False) -> list[Participant]:
-    """Get all participants"""
-    with ParticipantRepository(get_db()) as pati_repo:
-        all_participants: list[Participant] = pati_repo.get_all(
-            "HUMAN",
-            only_active=only_active,
-            include_relations=False,
-        )
-        return all_participants
-
-
-def get_participant(
-    pati_id: int, include_relations: bool = True, include_proxies: bool = True
-) -> Optional[Participant]:
-    """Get a participant by its id. Can be of all types of participants"""
-
-    with ParticipantRepository(get_db()) as pati_repo:
-        participant: Optional[Participant] = pati_repo.get_by_id(
-            pati_id,
-            include_relations=include_relations,
-            include_proxies=include_proxies,
-        )
-        return participant
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def get_participant_by_name(
-    name: str, participant_type: ParticipantType
-) -> Optional[Participant]:
-    """Returns the participant who maintained the change or created the app"""
-    try:
-        with ParticipantRepository(get_db()) as repo:
-            pati = repo.get_by_name(name, participant_type)
-    except Exception as e:
-        logger.exception(f"Cannot find {name} in users {e}")
-        return None
-    else:
-        return pati
 
 
 def compare_lists(a: list[str], b: list[str]) -> tuple[list[str], list[str]]:
@@ -242,7 +137,6 @@ def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
 
     username = username or st.session_state.get("username", None)
-
     if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get(
         "roles", []
     ):
@@ -255,14 +149,6 @@ def is_administrator(username: str | None = None) -> bool:
     ):
         return True
     return False
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def get_maintainer(name: str | None) -> Optional[Participant]:
-    """Returns the participant who maintained the change or created the app"""
-    if not name:
-        return None
-    return get_participant_by_name(name, ParticipantType.HUMAN)
 
 
 def filter_list(

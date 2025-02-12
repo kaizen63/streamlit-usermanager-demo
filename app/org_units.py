@@ -1,16 +1,20 @@
+"""Handles the Org Units page"""
+
 import logging
 import time
 from typing import Any, Optional, Union
 
 import streamlit as st
 from common import (
-    compare_lists,
-    get_participant,
-    get_participants,
     get_policy_enforcer,
-    set_org_units_into_session_state,
-    set_roles_into_session_state,
 )
+from participant_utilities import (
+    get_participant_by_display_name,
+    get_roles,
+    get_org_units,
+    get_users,
+)
+
 from config import settings
 from participants import (
     Participant,
@@ -23,17 +27,9 @@ from participants import (
     is_valid_name,
 )
 from db import get_db
-from users import add_roles, delete_roles
+from users import add_roles, delete_roles, process_participant_changes
 
 logger = logging.getLogger(settings.LOGGER_NAME)
-
-
-def init_session_state():
-    """Initializes the session state variables (dicts) users_all_users and users_all_org_units"""
-    org_units = get_participants(ParticipantType.ORG_UNIT, False)
-    set_org_units_into_session_state(org_units, "users_all_org_units")
-    roles = get_participants(ParticipantType.ROLE, True)
-    set_roles_into_session_state(roles, "users_all_roles")
 
 
 def render_roles_granted_to_org(
@@ -41,7 +37,7 @@ def render_roles_granted_to_org(
 ) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
-    selected_org_roles: Optional[set[str]] = set(
+    selected_org_roles: set[str] = set(
         [r.name for r in selected_org.roles if r.name != "PUBLIC"]
     )
 
@@ -49,7 +45,8 @@ def render_roles_granted_to_org(
     dis = disabled or (
         True if (selected_org.state == ParticipantState.TERMINATED) else False
     )
-    roles = get_participants(ParticipantType.ROLE, False)
+    roles = get_roles(only_active=True)
+
     options = [
         r.name for r in roles if r.name != "PUBLIC"
     ]  # remove the ones we  do not want
@@ -82,7 +79,7 @@ def render_users_of_org(
             ]
             if not selected_options:
                 return []
-    all_users = get_participants(ParticipantType.HUMAN, True)
+    all_users = get_users(only_active=True)
     options = [u.display_name for u in all_users]
 
     selected = st.multiselect(
@@ -112,7 +109,7 @@ def render_orgs_of_org(
             ]
             if not selected_options:
                 return []
-    all_orgs = get_participants(ParticipantType.ORG_UNIT, True)
+    all_orgs = get_org_units(only_active=True)
     options = [o.display_name for o in all_orgs]
 
     selected = st.multiselect(
@@ -133,7 +130,7 @@ def render_org_is_member_of(
     # get the users connected to this org
     selected_options = []
     with ParticipantRelationRepository(get_db()) as repo:
-        all_orgs = get_participants(ParticipantType.ORG_UNIT, False)
+        all_orgs = get_org_units(only_active=False, include_relations=True)
         options = [o.display_name for o in all_orgs]
         member_of_org = repo.get(selected_org.id, ("MEMBER OF",))
         if member_of_org:
@@ -159,36 +156,25 @@ def save_role_changes(
 ) -> bool:
     """Saves the changes to the database. Returns True if a change was made to the database"""
     org_roles = [r.name for r in selected_org_unit.roles if r.name != "PUBLIC"]
-    new_roles, deleted_roles = compare_lists(list(selected_roles), org_roles)
 
-    logger.debug(
-        f"Org Unit: {selected_org_unit.name} - new_roles: {', '.join(new_roles)} deleted roles: {', '.join(deleted_roles)}"
+    return process_participant_changes(
+        pati_repo,
+        selected_org_unit,
+        "roles",
+        org_roles,
+        selected_roles,
+        add_func=add_roles,
+        delete_func=delete_roles,
     )
-
-    if new_roles:
-        add_roles(pati_repo, selected_org_unit, new_roles)
-    if deleted_roles:
-        delete_roles(pati_repo, selected_org_unit, deleted_roles)
-
-    if new_roles or deleted_roles:
-        return True
-    return False
 
 
 def render_org_units_selectbox() -> Optional[Participant]:
-
+    """Renders the Org Units selectbox. Shows the Org Units display names"""
     show_only_active = st.toggle(label="Show only active", value=True)
-    if show_only_active:
-        org_units = sorted(
-            [
-                v["display_name"]
-                for v in st.session_state.users_all_org_units.values()
-                if v["state"] == "ACTIVE"
-            ]
-        )
-    else:
-        org_units = sorted(st.session_state.users_all_org_units.keys())
-
+    all_org_units = get_org_units(
+        only_active=show_only_active, include_relations=False
+    )
+    org_units = [o.display_name for o in all_org_units]
     key = "org_units_selectbox"
     selected_key = key + "_selected"
     if (
@@ -207,22 +193,21 @@ def render_org_units_selectbox() -> Optional[Participant]:
     )
     if selected:
         st.session_state[selected_key] = selected
-        if selected_org_unit := get_participant(
-            st.session_state.users_all_org_units[selected]["id"],
+        if selected_org_unit := get_participant_by_display_name(
+            selected,
+            ParticipantType.ORG_UNIT,
             include_relations=True,
             include_proxies=False,
         ):
             return selected_org_unit
         else:
             st.error(f"Selected org_unit not found. {selected} ")
-            # Remove the user from the session_state.user_users
-            st.session_state.users_all_org_units.pop(selected)
             st.stop()
 
     return None
 
 
-def render_create_org_unit_form(title: str):
+def render_create_org_unit_form(title: str) -> None:
     """Renders the create user form and handles the submit button"""
     """Renders the create org unit form and handles the submit button"""
     disabled = False
@@ -250,8 +235,8 @@ def render_create_org_unit_form(title: str):
             else:
                 if not is_valid_name(org_unit_name.strip()):
                     st.error(
-                        "Invalid Name. Name must be at least 2 characters long, start with a letter, can contain "
-                        + "numbers, underscores and hyphens"
+                        "Invalid Name. Name must be at least 2 characters long, start with a letter, "
+                        + "can contain numbers, underscores and hyphens"
                     )
                     st.stop()
 
@@ -289,9 +274,7 @@ def render_create_org_unit_form(title: str):
                             name=org_unit_name,
                             display_name=display_name,
                             description=description,
-                            created_by=st.session_state.current_user[
-                                "username"
-                            ],
+                            created_by=st.session_state.username,
                             participant_type=ParticipantType.ORG_UNIT,
                         )
                         _ = pati_repo.create(create)
@@ -308,21 +291,43 @@ def render_create_org_unit_form(title: str):
                         )
                         time.sleep(1)
                         # Clear the cache, because get_participants is cached and must be reread
-                        get_participants.clear()
-                        init_session_state()
+                        get_org_units.clear()
                         st.rerun()  # to render the user selectbox new.
 
 
-def render_org_units_update(selected_org_unit: Participant):
+def save_org_changes(
+    pati_repo: ParticipantRepository,
+    selected_org_unit: Participant,
+    changes: dict[str, Any],
+) -> None:
+    """Saves the Org Unit changes"""
+
+    changes["updated_by"] = (
+        st.session_state.username if "updated_by" not in changes else None
+    )
+
+    update = ParticipantUpdate.model_validate(changes)
+    try:
+        pati_repo.update(selected_org_unit.id, update)
+    except Exception as e:
+        pati_repo.rollback()
+        logger.exception(e)
+        st.exception(e)
+        raise
+    else:
+        pati_repo.commit()
+        get_org_units.clear()  # To reread the changes.
+        st.success(f"Org Unit {selected_org_unit.display_name} saved")
+
+
+def render_update_org_unit_form(selected_org_unit: Participant) -> None:
+    """Renders the update dialog"""
     enforcer = get_policy_enforcer()
     disabled = not enforcer.enforce(
-        st.session_state.current_user["username"], "org_units", "write"
+        st.session_state.username, "org_units", "write"
     )
     with st.form(key="update_org_unit_form", border=False):
-        if selected_org_unit.state == ParticipantState.ACTIVE:
-            index = 0
-        else:
-            index = 1
+        index = 0 if selected_org_unit.state == ParticipantState.ACTIVE else 1
         state_toggle = st.radio(
             label="Status",
             options=["ACTIVE", "TERMINATED"],
@@ -347,27 +352,24 @@ def render_org_units_update(selected_org_unit: Participant):
             disabled=disabled,
         )
 
-        _ = render_org_is_member_of(
+        render_org_is_member_of(
             "",
             selected_org_unit,
-            True,  # do not let them change it here disabled
-        )
-
+            True,
+        )  # do not let them change it here disabled
         selected_roles = render_roles_granted_to_org(
             "", selected_org_unit, disabled
         )
-
-        _ = render_users_of_org(
+        render_users_of_org(
             "",
             selected_org_unit,
-            True,  # do not let them change it here disabled
-        )
-
-        _ = render_orgs_of_org(
+            True,
+        )  # do not let them change it here disabled
+        render_orgs_of_org(
             "",
             selected_org_unit,
-            True,  # do not let them change it here disabled
-        )
+            True,
+        )  # do not let them change it here disabled
 
         if st.form_submit_button("Save", disabled=disabled):
             if len(display_name) == 0:
@@ -386,62 +388,58 @@ def render_org_units_update(selected_org_unit: Participant):
                     st.exception(e)
                     raise
                 else:
-                    org_changes: dict[str, Any] = dict()
-                    if selected_org_unit.display_name != display_name:
-                        org_changes["display_name"] = display_name
-                    if selected_org_unit.name != name:
-                        org_changes["name"] = name
-                    if selected_org_unit.description != description:
-                        org_changes["description"] = description
-                    if state_toggle != str(selected_org_unit.state):
-                        org_changes["state"] = state_toggle
+                    org_changes = {
+                        "display_name": (
+                            display_name
+                            if selected_org_unit.display_name != display_name
+                            else None
+                        ),
+                        "name": (
+                            name if selected_org_unit.name != name else None
+                        ),
+                        "description": (
+                            description
+                            if selected_org_unit.description != description
+                            else None
+                        ),
+                        "state": (
+                            state_toggle
+                            if state_toggle != str(selected_org_unit.state)
+                            else None
+                        ),
+                    }
+                    org_changes = {
+                        k: v for k, v in org_changes.items() if v is not None
+                    }
+
                     if org_changes:
-                        org_changes["updated_by"] = (
-                            st.session_state.current_user["username"]
+                        save_org_changes(
+                            pati_repo, selected_org_unit, org_changes
                         )
-                        update = ParticipantUpdate.model_validate(org_changes)
-                        try:
-                            pati_repo.update(selected_org_unit.id, update)
-                        except Exception as e:
-                            pati_repo.rollback()
-                            logger.exception(e)
-                            st.exception(e)
-                            raise
-                        else:
-                            pati_repo.commit()
-                            st.success(
-                                f"Org Unit {selected_org_unit.display_name} saved"
-                            )
-                            time.sleep(1)
-                            get_participants.clear()  # To reread the changes.
-                            init_session_state()
-                            st.rerun()
+                        time.sleep(1)
+                        st.rerun()
                     else:
                         if not role_changes:
                             st.info("No changes to save")
                         else:
                             # Only roles got changed
                             pati_repo.commit()
+                            get_org_units.clear()
                             st.success(
                                 f"Org Unit {selected_org_unit.display_name} saved"
                             )
-                            get_participants.clear()  # To reread the changes.
-                            init_session_state()
                             st.rerun()
 
 
-def render_org_units():
+def render_org_units() -> None:
     """Renders the Users dialog"""
-    init_session_state()
     with st.container(border=True):
         st.write("## Organizational Units")
         selected_org_unit = render_org_units_selectbox()
         if selected_org_unit:
-            render_org_units_update(selected_org_unit)
+            render_update_org_unit_form(selected_org_unit)
 
     enforcer = get_policy_enforcer()
-    if enforcer.enforce(
-        st.session_state.current_user["username"], "org_units", "create"
-    ):
+    if enforcer.enforce(st.session_state.username, "org_units", "create"):
         st.divider()
         render_create_org_unit_form("## Create Org Unit")

@@ -1,14 +1,20 @@
+"""Handles the Roles page"""
+
 import logging
 import time
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import streamlit as st
+
 from common import (
-    get_participant,
-    get_participants,
     get_policy_enforcer,
-    set_roles_into_session_state,
+    check_access,
 )
+from participant_utilities import (
+    get_participant_by_name,
+    get_roles,
+)
+
 from config import settings
 from participants import (
     Participant,
@@ -25,51 +31,36 @@ from db import get_db
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def init_session_state():
-    """Initializes the session state variables (dicts) users_all_users and users_all_org_units"""
-    roles = get_participants(ParticipantType.ROLE, False)
-    set_roles_into_session_state(roles, "users_all_roles")
-
-
 def render_roles_selectbox() -> Optional[Participant]:
-
+    """Renders the roles select box"""
     show_only_active = st.toggle(label="Show only active", value=True)
-    if show_only_active:
-        roles = sorted(
-            [
-                v["name"]
-                for v in st.session_state.users_all_roles.values()
-                if v["state"] == "ACTIVE"
-                and v["name"] not in {"PUBLIC", "ADMINISTRATOR"}
-            ]
-        )
-    else:
-        roles = sorted(
-            [
-                r
-                for r in st.session_state.users_all_roles.keys()
-                if r not in {"PUBLIC", "ADMINISTRATOR"}
-            ]
-        )
-    # user_collection = SREUIParticipantCollection(users)
+    current_user = st.session_state.current_user["username"]
+    exclude_roles = (
+        {"PUBLIC"}
+        if check_access(current_user, "all_roles", "read")
+        else {"PUBLIC", "ADMINISTRATOR"}
+    )
+
+    all_roles: list[Participant] = get_roles(only_active=show_only_active)
+    roles = sorted(
+        [role.name for role in all_roles if role.name not in exclude_roles]
+    )
     key = "roles_selectbox"
-    selected_key = key + "_selected"
-    if (
-        selected_key in st.session_state
-        and st.session_state[selected_key]
+    selected_key = f"{key}_selected"
+    index = (
+        roles.index(st.session_state[selected_key])
+        if selected_key in st.session_state
         and st.session_state[selected_key] in roles
-    ):
-        index = roles.index(st.session_state[selected_key])
-    else:
-        index = 0
+        else 0
+    )
 
     selected = st.selectbox(
         label="Select a role", options=roles, key=key, index=index
     )
     if selected:
         st.session_state[selected_key] = selected
-        if selected_role := get_participant(
-            st.session_state.users_all_roles[selected]["id"]
+        if selected_role := get_participant_by_name(
+            selected, ParticipantType.ROLE, include_relations=True
         ):
             return selected_role
         else:
@@ -115,9 +106,8 @@ def render_participants_granted_this_role(
     return selected
 
 
-def render_create_role_form(title: str):
-    """Renders the create user form and handles the submit button"""
-    """Renders the create user form and handles the submit button"""
+def render_create_role_form(title: str) -> None:
+    """Renders the create role form and handles the submit button"""
     with st.form(key="create_role_form", clear_on_submit=False):
         st.write(title)
         role_name = st.text_input(
@@ -136,8 +126,8 @@ def render_create_role_form(title: str):
             else:
                 if not is_valid_name(role_name.strip()):
                     st.error(
-                        "Invalid Name. Name must be at least 2 characters long, start with a letter, "
-                        + "can contain numbers, underscores and hyphens"
+                        "Invalid Name. Name must be at least 2 characters long, start with a letter,"
+                        + " can contain numbers, underscores and hyphens"
                     )
                     st.stop()
 
@@ -173,9 +163,7 @@ def render_create_role_form(title: str):
                             name=role_name,
                             display_name=display_name,
                             description=description,
-                            created_by=st.session_state.current_user[
-                                "username"
-                            ],
+                            created_by=st.session_state.username,
                             participant_type=ParticipantType.ROLE,
                         )
                         _ = pati_repo.create(create)
@@ -187,26 +175,22 @@ def render_create_role_form(title: str):
                         pati_repo.rollback()
                     else:
                         pati_repo.commit()
+                        get_roles.clear()
                         st.success(f"Role {role_name} created")
                         time.sleep(1)
-                        # Clear the cache, because get_participants is cached and must be reread
-                        st.cache_data.clear()
-                        init_session_state()
                         st.rerun()  # to render the user selectbox new.
 
 
-def render_update_role_form(selected_role: Participant):
+def render_update_role_form(selected_role: Participant) -> None:
+    """Renders the role update dialog"""
     enforcer = get_policy_enforcer()
-
     disabled = not enforcer.enforce(
-        st.session_state.current_user["username"], "roles", "write"
+        st.session_state.username, "roles", "write"
     )
 
     with st.form(key="update_role_form", border=False):
-        if selected_role.state == ParticipantState.ACTIVE:
-            index = 0
-        else:
-            index = 1
+        index = 0 if selected_role.state == ParticipantState.ACTIVE else 1
+
         state_toggle = st.radio(
             label="Status",
             options=["ACTIVE", "TERMINATED"],
@@ -229,21 +213,29 @@ def render_update_role_form(selected_role: Participant):
             if len(display_name) == 0:
                 st.error("Display name cannot be empty")
                 st.stop()
+            db_changes = {
+                "display_name": (
+                    display_name
+                    if selected_role.display_name != display_name
+                    else None
+                ),
+                "description": (
+                    description
+                    if selected_role.description != description
+                    else None
+                ),
+                "state": (
+                    state_toggle
+                    if state_toggle != str(selected_role.state)
+                    else None
+                ),
+            }
+            db_changes = {k: v for k, v in db_changes.items() if v is not None}
+            if db_changes:
+                db_changes["updated_by"] = st.session_state.username
+                update = ParticipantUpdate.model_validate(db_changes)
 
-            with ParticipantRepository(get_db()) as pati_repo:
-
-                db_changes: dict[str, Any] = dict()
-                if selected_role.display_name != display_name:
-                    db_changes["display_name"] = display_name
-                if selected_role.description != description:
-                    db_changes["description"] = description
-                if state_toggle != str(selected_role.state):
-                    db_changes["state"] = state_toggle
-                if db_changes:
-                    db_changes["updated_by"] = st.session_state.current_user[
-                        "username"
-                    ]
-                    update = ParticipantUpdate.model_validate(db_changes)
+                with ParticipantRepository(get_db()) as pati_repo:
                     try:
                         pati_repo.update(selected_role.id, update)
                     except Exception as e:
@@ -253,18 +245,17 @@ def render_update_role_form(selected_role: Participant):
                         raise
                     else:
                         pati_repo.commit()
+                        get_roles.clear()
+                        get_participant_by_name.clear()
                         st.success(f"Role {selected_role.name} saved")
                         time.sleep(1)
-                        get_participants.clear()  # To reread the changes.
-                        init_session_state()
                         st.rerun()
-                else:
-                    st.info("No changes to save")
+            else:
+                st.info("No changes to save")
 
 
-def render_roles():
+def render_roles() -> None:
     """Renders the Users dialog"""
-    init_session_state()
     with st.container(border=True):
         st.write("## Roles")
         selected_role = render_roles_selectbox()
@@ -280,8 +271,6 @@ def render_roles():
         )
 
     enforcer = get_policy_enforcer()
-    if enforcer.enforce(
-        st.session_state.current_user["username"], "roles", "create"
-    ):
+    if enforcer.enforce(st.session_state.username, "roles", "create"):
         st.divider()
         render_create_role_form("## Create Role")

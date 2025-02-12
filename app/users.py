@@ -1,23 +1,25 @@
+"""Handles User Creation/Update"""
+
 import logging
 import time
-from typing import Any
+from typing import Any, Optional, Union, Callable, Literal, TypeAlias
 
 import streamlit as st
 from common import (
     APP_ROLES,
     AppRoles,
-    MissingStateVariableError,
     compare_lists,
-    get_participant,
-    get_participants,
     get_policy_enforcer,
     is_administrator,
-    set_org_units_into_session_state,
-    set_roles_into_session_state,
-    set_users_into_session_state,
-    get_st_current_user,
+)
+from participant_utilities import (
+    get_participant_by_display_name,
+    get_users,
+    get_org_units,
+    get_participant_ids,
 )
 from config import settings
+from contact import send_email
 from participants import (
     Participant,
     ParticipantCreate,
@@ -38,7 +40,7 @@ def render_roles(
 ) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
-    users_roles: set[str] = set(
+    users_roles: Optional[set[str]] = set(
         [r.name for r in selected_user.roles if r.name != "PUBLIC"]
     )
     # Only administrator can assign another one the administrator roles
@@ -92,13 +94,15 @@ def render_effective_roles(title: str, selected_user: Participant) -> None:
 def render_org_units(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
+    """Renders the Org Units page and returns a list of org unit display names"""
     st.write(title)
-    selected_user_orgs: set[str] | None = set(
+    selected_user_orgs: Optional[set[str]] = set(
         [ou.display_name for ou in selected_user.org_units]
     )
     if not selected_user_orgs:
         selected_user_orgs = None
-    all_orgs = st.session_state.users_all_org_units.keys()
+    all_orgs = get_org_units(only_active=True)
+    options = [o.display_name for o in all_orgs]
 
     dis = disabled or (
         True if (selected_user.state == ParticipantState.TERMINATED) else False
@@ -107,7 +111,7 @@ def render_org_units(
     key = "users_member_of_multiselect"
     member_of = st.multiselect(
         "Member of",
-        options=all_orgs,
+        options=options,
         default=selected_user_orgs,
         key=key,
         disabled=dis,
@@ -118,17 +122,21 @@ def render_org_units(
 def render_proxy_of(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
+    """Renders the Proxy of section"""
     st.write(title)
-    selected_users_proxy_of: set[str] | None = set(
+    selected_users_proxy_of: Optional[set[str]] = set(
         [po.display_name for po in selected_user.proxy_of]
     )
     if not selected_users_proxy_of:
         selected_users_proxy_of = None
-    all_users = [
-        x
-        for x in st.session_state.users_all_users.keys()
-        if x != st.session_state.get("users_selectbox", "")
-    ]
+    all_users: list[Participant] = get_users(only_active=False)
+    options = sorted(
+        [
+            x.display_name
+            for x in all_users
+            if x.display_name != st.session_state.get("users_selectbox", "")
+        ]
+    )
     dis = disabled or (
         True if (selected_user.state == ParticipantState.TERMINATED) else False
     )
@@ -136,7 +144,7 @@ def render_proxy_of(
     key = "users_proxy_of_multiselect"
     proxy_of = st.multiselect(
         "Select users or leave empty",
-        options=all_users,
+        options=options,
         default=selected_users_proxy_of,
         key=key,
         placeholder="Choose a user or leave empty",
@@ -148,16 +156,17 @@ def render_proxy_of(
 def render_proxies(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
+    """Render the proxies"""
     st.write(title)
-    selected_users_proxies: set[str] | None = set(
+    selected_users_proxies: Optional[set[str]] = set(
         [po.display_name for po in selected_user.proxies]
     )
     if not selected_users_proxies:
         selected_users_proxies = None
     all_users = [
-        x
-        for x in st.session_state.users_all_users.keys()
-        if x != st.session_state.get("users_selectbox", "")
+        x.display_name
+        for x in get_users(only_active=True)
+        if x.id != selected_user.id
     ]
     dis = disabled or (
         True if (selected_user.state == ParticipantState.TERMINATED) else False
@@ -197,7 +206,7 @@ def add_relations(
                 participant,
                 r_id,
                 relation_type,
-                created_by=st.session_state.current_user["username"],
+                created_by=st.session_state.username,
             )
     except Exception as e:
         st.exception(e)
@@ -205,7 +214,7 @@ def add_relations(
         raise e
     else:
         logger.debug(
-            f"Added {relation_type=} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
+            f"Added {relation_type.value} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
         )
 
 
@@ -231,7 +240,7 @@ def add_reverse_relations(
                 participant,
                 r_id,
                 relation_type,
-                created_by=st.session_state.current_user["username"],
+                created_by=st.session_state.username,
             )
     except Exception as e:
         st.exception(e)
@@ -318,17 +327,11 @@ def add_roles(
     if not roles:
         return
     try:
-        if "users_all_roles" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_roles'")
-            raise MissingStateVariableError("users_all_roles")
-
-        related_roles_ids = [
-            st.session_state.users_all_roles[role]["id"] for role in roles
-        ]
+        role_ids = get_participant_ids(ParticipantType.ROLE, "name", roles)
         add_relations(
             pati_repo,
             participant,
-            related_roles_ids,
+            role_ids,
             ParticipantRelationType.GRANT,
         )
     except Exception as e:
@@ -347,18 +350,13 @@ def delete_roles(
     """Deletes the roles to the participant"""
     if not roles:
         return
-    if "users_all_roles" not in st.session_state:
-        logger.fatal("Missing state variable 'users_all_roles'")
-        raise MissingStateVariableError("users_all_roles")
 
-    related_roles_ids = [
-        st.session_state.users_all_roles[role]["id"] for role in roles
-    ]
+    role_ids = get_participant_ids(ParticipantType.ROLE, "name", roles)
     try:
         delete_relations(
             pati_repo,
             participant,
-            related_roles_ids,
+            role_ids,
             ParticipantRelationType.GRANT,
         )
     except Exception as e:
@@ -377,18 +375,14 @@ def add_orgs(
     if not org_units:
         return
     try:
-        if "users_all_org_units" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_org_units'")
-            raise MissingStateVariableError("users_all_org_units")
+        org_ids = get_participant_ids(
+            ParticipantType.ORG_UNIT, "display_name", org_units
+        )
 
-        related_org_ids = [
-            st.session_state.users_all_org_units[org_unit]["id"]
-            for org_unit in org_units
-        ]
         add_relations(
             pati_repo,
             participant,
-            related_org_ids,
+            org_ids,
             ParticipantRelationType.MEMBER_OF,
         )
     except Exception as e:
@@ -408,17 +402,14 @@ def add_proxy_of(
     if not proxy_of:
         return
     try:
-        if "users_all_users" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_users'")
-            raise MissingStateVariableError("users_all_users")
+        user_ids = get_participant_ids(
+            ParticipantType.HUMAN, "display_name", proxy_of
+        )
 
-        related_user_ids = [
-            st.session_state.users_all_users[po]["id"] for po in proxy_of
-        ]
         add_relations(
             pati_repo,
             participant,
-            related_user_ids,
+            user_ids,
             ParticipantRelationType.PROXY_OF,
         )
     except Exception as e:
@@ -434,21 +425,17 @@ def delete_proxy_of(
     participant: Participant,
     proxy_of: list[str],
 ) -> None:
-    """Delets the proxy_of to the participant"""
+    """Deletes the proxy_of to the participant"""
     if not proxy_of:
         return
     try:
-        if "users_all_users" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_users'")
-            raise MissingStateVariableError("users_all_users")
-
-        related_user_ids = [
-            st.session_state.users_all_users[po]["id"] for po in proxy_of
-        ]
+        user_ids = get_participant_ids(
+            ParticipantType.HUMAN, "display_name", proxy_of
+        )
         delete_relations(
             pati_repo,
             participant,
-            related_user_ids,
+            user_ids,
             ParticipantRelationType.PROXY_OF,
         )
     except Exception as e:
@@ -467,18 +454,13 @@ def delete_orgs(
     if not org_units:
         return
     try:
-        if "users_all_org_units" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_org_units'")
-            raise MissingStateVariableError("users_all_org_units")
-
-        related_org_ids = [
-            st.session_state.users_all_org_units[org_unit]["id"]
-            for org_unit in org_units
-        ]
+        org_ids = get_participant_ids(
+            ParticipantType.ORG_UNIT, "display_name", org_units
+        )
         delete_relations(
             pati_repo,
             participant,
-            related_org_ids,
+            org_ids,
             ParticipantRelationType.MEMBER_OF,
         )
     except Exception as e:
@@ -500,13 +482,9 @@ def add_proxy(
     if not proxies:
         return
     try:
-        if "users_all_users" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_users'")
-            raise MissingStateVariableError("users_all_users")
-
-        user_ids = [
-            st.session_state.users_all_users[pr]["id"] for pr in proxies
-        ]
+        user_ids = get_participant_ids(
+            ParticipantType.HUMAN, "display_name", proxies
+        )
         add_reverse_relations(
             pati_repo,
             participant,
@@ -530,13 +508,9 @@ def delete_proxy(
     if not proxies:
         return
     try:
-        if "users_all_users" not in st.session_state:
-            logger.fatal("Missing state variable 'users_all_users'")
-            raise MissingStateVariableError("users_all_users")
-
-        user_ids = [
-            st.session_state.users_all_users[pr]["id"] for pr in proxies
-        ]
+        user_ids = get_participant_ids(
+            ParticipantType.HUMAN, "display_name", proxies
+        )
         delete_reverse_relations(
             pati_repo,
             participant,
@@ -551,6 +525,40 @@ def delete_proxy(
         logger.debug(f"Deleted proxies: {', '.join(proxies)}")
 
 
+EntityNameType: TypeAlias = Literal["roles", "org_units", "proxy_of", "proxy"]
+
+
+def process_participant_changes(
+    pati_repo: ParticipantRepository,
+    selected_participant: Participant,
+    entity_name: EntityNameType,
+    current_items: list[str],
+    selected_items: list[str],
+    add_func: Callable[[ParticipantRepository, Participant, list[str]], None],
+    delete_func: Callable[
+        [ParticipantRepository, Participant, list[str]], None
+    ],
+) -> bool:
+    """Processes the add and delete of an entity"""
+
+    def log_changes() -> None:
+        """Log what has been added and deleted from a user"""
+        logger.debug(
+            f"User: {selected_participant.name} - new {entity_name}: {', '.join(new_items)} "
+            f"deleted {entity_name}: {', '.join(deleted_items)}"
+        )
+
+    new_items, deleted_items = compare_lists(selected_items, current_items)
+    if not new_items and not deleted_items:
+        return False
+    log_changes()
+    if new_items:
+        add_func(pati_repo, selected_participant, new_items)
+    if deleted_items:
+        delete_func(pati_repo, selected_participant, deleted_items)
+    return True if new_items or deleted_items else False
+
+
 def save_user_changes(
     pati_repo: ParticipantRepository,
     selected_user: Participant,
@@ -563,11 +571,12 @@ def save_user_changes(
     selected_proxies: list[str],
 ) -> bool:
     """Saves the changes to the database. Returns True if a change was made to the database"""
+    changed_something = False
     logger.info(
         f"Saving user: {selected_user.name}: {selected_user.display_name}"
     )
     if user_changes:
-        user_changes["updated_by"] = st.session_state.current_user["username"]
+        user_changes["updated_by"] = st.session_state.username
         update = ParticipantUpdate.model_validate(user_changes)
         try:
             pati_repo.update(selected_user.id, update)
@@ -577,85 +586,155 @@ def save_user_changes(
             logger.exception(e)
             st.exception(e)
             raise
+        else:
+            changed_something = True
 
-    user_roles = [r.name for r in selected_user.roles if r.name != "PUBLIC"]
-    new_roles, deleted_roles = compare_lists(list(selected_roles), user_roles)
-
-    logger.debug(
-        f"User: {selected_user.name} - new_roles: {', '.join(new_roles)} deleted roles: {', '.join(deleted_roles)}"
+    current_roles = [r.name for r in selected_user.roles if r.name != "PUBLIC"]
+    changed_something = (
+        True
+        if process_participant_changes(
+            pati_repo,
+            selected_user,
+            "roles",
+            current_items=current_roles,
+            selected_items=selected_roles,
+            add_func=add_roles,
+            delete_func=delete_roles,
+        )
+        else changed_something
     )
 
-    user_org_units = [r.display_name for r in selected_user.org_units]
-    new_org_units, deleted_org_units = compare_lists(
-        selected_org_units, user_org_units
-    )
-    logger.debug(
-        f"User: {selected_user.name} - new_org_units: {', '.join(new_org_units)} deleted org_units: "
-        + f"{', '.join(deleted_org_units)}"
-    )
-
-    user_proxy_of = [r.display_name for r in selected_user.proxy_of]
-    new_proxy_of, deleted_proxy_of = compare_lists(
-        selected_proxy_of, user_proxy_of
-    )
-    logger.debug(
-        f"User: {selected_user.name} - new_proxy_of: {', '.join(new_proxy_of)} deleted proxy_of: {', '.join(deleted_proxy_of)}"
+    current_org_units = [ou.display_name for ou in selected_user.org_units]
+    changed_something = (
+        True
+        if process_participant_changes(
+            pati_repo,
+            selected_user,
+            "org_units",
+            current_items=current_org_units,
+            selected_items=selected_org_units,
+            add_func=add_orgs,
+            delete_func=delete_orgs,
+        )
+        else changed_something
     )
 
-    user_proxies = [r.display_name for r in selected_user.proxies]
-    new_proxies, deleted_proxies = compare_lists(
-        selected_proxies, user_proxies
-    )
-    logger.debug(
-        f"User: {selected_user.name} - new_proxies: {', '.join(new_proxies)} deleted proxies: {', '.join(deleted_proxies)}"
+    current_proxy_of = [po.display_name for po in selected_user.proxy_of]
+    changed_something = (
+        True
+        if process_participant_changes(
+            pati_repo,
+            selected_user,
+            "proxy_of",
+            current_items=current_proxy_of,
+            selected_items=selected_proxy_of,
+            add_func=add_proxy_of,
+            delete_func=delete_proxy_of,
+        )
+        else changed_something
     )
 
-    if new_roles:
-        add_roles(pati_repo, selected_user, new_roles)
-    if deleted_roles:
-        delete_roles(pati_repo, selected_user, deleted_roles)
-    if new_org_units:
-        add_orgs(pati_repo, selected_user, new_org_units)
-    if deleted_org_units:
-        delete_orgs(pati_repo, selected_user, deleted_org_units)
-    if new_proxy_of:
-        add_proxy_of(pati_repo, selected_user, new_proxy_of)
-    if deleted_proxy_of:
-        delete_proxy_of(pati_repo, selected_user, deleted_proxy_of)
-    if new_proxies:
-        add_proxy(pati_repo, selected_user, new_proxies)
-    if deleted_proxies:
-        delete_proxy(pati_repo, selected_user, deleted_proxies)
+    current_proxies = [p.display_name for p in selected_user.proxies]
+    changed_something = (
+        True
+        if process_participant_changes(
+            pati_repo,
+            selected_user,
+            "proxy",
+            current_items=current_proxies,
+            selected_items=selected_proxies,
+            add_func=add_proxy,
+            delete_func=delete_proxy,
+        )
+        else changed_something
+    )
 
-    if (
-        new_roles
-        or deleted_roles
-        or new_org_units
-        or deleted_org_units
-        or new_proxy_of
-        or deleted_proxy_of
-        or new_proxies
-        or deleted_proxies
-        or user_changes
-    ):
+    return changed_something
+
+
+def save_new_user(
+    pati_repo: ParticipantRepository,
+    *,
+    username: str,
+    display_name: str,
+    description: str,
+    email: str,
+) -> None:
+    """Saves the new user and grants the role PUBLIC to the user"""
+
+    try:
+        create = ParticipantCreate(
+            name=username,
+            display_name=display_name,
+            created_by=st.session_state.username,
+            participant_type=ParticipantType.HUMAN,
+            description=description,
+            email=email,
+        )
+        new_pati = pati_repo.create(create)
+
+    except Exception as e:
+        logger.exception(f"User creation failed: {e}")
+        st.error("Oops that went wrong")
+        raise
+    else:
+        try:
+            add_roles(pati_repo, new_pati, ["PUBLIC"])
+        except Exception as e:
+            logger.exception(f"User assigning to role PUBLIC failed: {e}")
+            raise
+        else:
+            return
+
+
+def check_new_user_exists(
+    pati_repo: ParticipantRepository, username: str, display_name: str
+) -> bool:
+    """Checks if the new user exists, either with its username or display_name and active or terminated.
+    Returns True if the username already exists, False otherwise."""
+    exists: Union[bool | str] = pati_repo.exists(
+        "name", username, ParticipantType.HUMAN
+    )
+    if exists:
+        if exists == ParticipantState.TERMINATED:
+            st.error(
+                f"Username: {username!a} already exists but is not active"
+            )
+        else:
+            st.error(f"Username: {username!a} already exists")
+
+        return True
+
+    exists = pati_repo.exists(
+        "display_name", display_name, ParticipantType.HUMAN
+    )
+    if exists:
+        if exists == ParticipantState.TERMINATED:
+            st.error(
+                f"User with the same display name: {display_name!a} already exists but is not active"
+            )
+        else:
+            st.error(
+                f"User with the same display name: {display_name!a} already exists"
+            )
         return True
     return False
 
 
-def render_create_user_form(title: str):
+def render_create_user_form(title: str) -> None:
     """Renders the create user form and handles the submit button"""
     with st.form(key="create_user_form", clear_on_submit=False):
         st.write(title)
         username = st.text_input(
-            "USERID",
-            help="Must be a valid userid, otherwise the user cannot be authenticated",
+            "Enterprise USERID",
+            help="Must be an NIQ Enterprise ID, otherwise the user cannot be authenticated",
             placeholder="DOEJOHN01",
         )
         display_name = st.text_input(
             "Display Name", placeholder="Doe, John", help="Last, First"
         )
 
-        email = st.text_input("Email", placeholder="john.doe@acme.com")
+        email = st.text_input("Email", placeholder="john.doe@nielseniq.com")
         description = st.text_input(label="Description (Optional)", value="")
 
         if st.form_submit_button("Create"):
@@ -669,98 +748,46 @@ def render_create_user_form(title: str):
 
                 username = username.upper()
                 with ParticipantRepository(get_db()) as pati_repo:
-                    exists: bool | str = pati_repo.exists(
-                        "name", username, ParticipantType.HUMAN
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"Username: {username!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(f"Username: {username!a} already exists")
-
-                        return
-                    exists = pati_repo.exists(
-                        "display_name", display_name, ParticipantType.HUMAN
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"User with the same name: {display_name!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(
-                                f"User with the same name: {display_name!a} already exists"
-                            )
+                    if check_new_user_exists(
+                        pati_repo, username, display_name
+                    ):
                         return
                     try:
-                        create = ParticipantCreate(
-                            name=username,
+                        save_new_user(
+                            pati_repo=pati_repo,
+                            username=username,
                             display_name=display_name,
-                            created_by=st.session_state.current_user[
-                                "username"
-                            ],
-                            participant_type=ParticipantType.HUMAN,
                             description=description,
                             email=email,
                         )
-                        new_pati = pati_repo.create(create)
-
-                        # Now add him to the session state.
                     except Exception as e:
                         logger.exception(f"User creation failed: {e}")
                         st.error("Oops that went wrong")
                         pati_repo.rollback()
                     else:
-                        try:
-                            add_roles(pati_repo, new_pati, ["PUBLIC"])
-                        except Exception as e:
-                            logger.exception(
-                                f"User assigning to role PUBLIC failed: {e}"
-                            )
-                        else:
-                            pati_repo.commit()
-                            st.success(f"User {username} created")
-                            time.sleep(1)
-                            # Clear the cache, because get_participants is cached and must be reread
-                            get_participants.clear()
-                            init_session_state()
-                            st.session_state["users_selectbox_selected"] = (
-                                display_name
-                            )
-                            st.rerun()  # to render the user selectbox new.
+                        pati_repo.commit()
+                        st.success(f"User {username} created")
+                        time.sleep(1)
+
+                        get_users.clear()
+                        st.session_state["users_selectbox_selected"] = (
+                            display_name
+                        )
+                        st.rerun()  # to render the user selectbox new.
 
 
-def init_session_state():
-    """Initializes the session state variables (dicts) users_all_users and users_all_org_units"""
-    users = get_participants(ParticipantType.HUMAN, False)
-    set_users_into_session_state(users, "users_all_users")
-
-    org_units = get_participants(ParticipantType.ORG_UNIT, True)
-    set_org_units_into_session_state(org_units, "users_all_org_units")
-
-    roles = get_participants(ParticipantType.ROLE, False)
-    roles = [
-        r for r in roles if r.name in APP_ROLES or r.name == "PUBLIC"
-    ]  # remove the ones we  do not want
-    set_roles_into_session_state(roles, "users_all_roles")
-
-
-def render_user_selectbox() -> Participant | None:
-
+def render_user_selectbox() -> Optional[Participant]:
+    """Renders the users selectbox"""
     show_only_active = st.toggle(label="Show only active", value=True)
-    if show_only_active:
-        usernames = sorted(
-            [
-                v["display_name"]
-                for v in st.session_state.users_all_users.values()
-                if v["state"] == "ACTIVE"
-            ]
-        )
-    else:
-        usernames = sorted(st.session_state.users_all_users.keys())
-
+    # for speed, we do not query the relations. This will be done when we have selected one user
+    usernames = sorted(
+        [
+            u.display_name
+            for u in get_users(
+                only_active=show_only_active, include_relations=False
+            )
+        ]
+    )
     key = "users_selectbox"
     selected_key = key + "_selected"
     if (
@@ -780,8 +807,11 @@ def render_user_selectbox() -> Participant | None:
     )
     if selected:
         st.session_state[selected_key] = selected
-        if selected_user := get_participant(
-            st.session_state.users_all_users[selected]["id"]
+        if selected_user := get_participant_by_display_name(
+            selected,
+            ParticipantType.HUMAN,
+            include_relations=True,
+            include_proxies=True,
         ):
             return selected_user
         else:
@@ -794,19 +824,14 @@ def render_user_selectbox() -> Participant | None:
     return selected_user
 
 
-def render_update_user_form(selected_user: Participant):
+def render_update_user_form(selected_user: Participant) -> None:
     """Renders the roles, groups and proxies and handles the save button"""
     enforcer = get_policy_enforcer()
-    current_user = get_st_current_user()
-    if not current_user:
-        return
+    disabled = not enforcer.enforce(
+        st.session_state.username, "users", "write"
+    )
 
-    disabled = not enforcer.enforce(current_user.username, "users", "write")
-
-    if selected_user.state == ParticipantState.ACTIVE:
-        index = 0
-    else:
-        index = 1
+    index = 0 if selected_user.state == ParticipantState.ACTIVE else 1
 
     state_toggle = st.radio(
         label="Status",
@@ -825,11 +850,17 @@ def render_update_user_form(selected_user: Participant):
         disabled=disabled,
     )
 
+    email = st.text_input(
+        label="Email",
+        value=selected_user.email,
+        disabled=disabled,
+    )
+
     description = st.text_input(
         label="Description", value=selected_user.description, disabled=disabled
     )
 
-    with st.form(key="update_user_form", clear_on_submit=False, border=False):
+    with st.form(key="update_user_form", clear_on_submit=False):
         scol1, scol2, scol3 = st.columns(3)
         with scol1:
             selected_roles = render_roles(
@@ -853,13 +884,27 @@ def render_update_user_form(selected_user: Participant):
 
         if st.form_submit_button("Save", disabled=disabled):
             with ParticipantRepository(get_db()) as pati_repo:
-                user_changes: dict[str, Any] = dict()
-                if selected_user.description != description:
-                    user_changes["description"] = description
-                if selected_user.display_name != display_name:
-                    user_changes["display_name"] = display_name
-                if state_toggle != str(selected_user.state):
-                    user_changes["state"] = state_toggle
+                user_changes = {
+                    "description": (
+                        description
+                        if selected_user.description != description
+                        else None
+                    ),
+                    "display_name": (
+                        display_name
+                        if selected_user.display_name != display_name
+                        else None
+                    ),
+                    "state": (
+                        state_toggle
+                        if state_toggle != str(selected_user.state)
+                        else None
+                    ),
+                    "email": email if selected_user.email != email else None,
+                }
+                user_changes = {
+                    k: v for k, v in user_changes.items() if v is not None
+                }
 
                 try:
                     updated = save_user_changes(
@@ -877,24 +922,19 @@ def render_update_user_form(selected_user: Participant):
                 else:
                     if updated:
                         pati_repo.commit()
+                        get_users.clear()
                         st.success(
                             f"User {selected_user.display_name!a} updated"
                         )
                         time.sleep(1)
-                        get_participants.clear()  # To reread the changes.
-                        init_session_state()
                         st.rerun()
                     else:
                         st.info("No changes to save")
                         time.sleep(1)
 
 
-def render_users():
+def render_users() -> None:
     """Renders the Users dialog"""
-    init_session_state()
-    current_user = get_st_current_user()
-    if not current_user:
-        return
     with st.container(border=True):
         st.write("## Users")
         selected_user = render_user_selectbox()
@@ -903,12 +943,12 @@ def render_users():
 
         render_update_user_form(selected_user)
     enforcer = get_policy_enforcer()
-    if enforcer.enforce(current_user.username, "users", "create"):
+    if enforcer.enforce(st.session_state.username, "users", "create"):
         st.divider()
         render_create_user_form("## Create User")
 
 
-def render_user_registration_form(title: str):
+def render_user_registration_form(title: str) -> None:
     """Renders the roles, groups and proxies and handles the save button"""
     st.write(title)
     st.write(
@@ -934,7 +974,7 @@ def render_user_registration_form(title: str):
 
             st.divider()
             conditions_accepted = st.checkbox(
-                label="I confirm that I'm authorized to access this application",
+                label="I confirm that I'm a NielsenIQ Manager and authorized to access this application",
                 value=False,
                 key="users_user_terms_accepted_checkbox",
             )
@@ -969,12 +1009,10 @@ def render_user_registration_form(title: str):
             st.stop()
 
 
-def render_self_registration_form(title: str):
-    """Self service for managers to create themselves as users"""
+def render_self_registration_form(title: str) -> None:
+    """Self-service for managers to create themselves as users"""
     st.write(title)
-    st.write(
-        ":red[You are not authorized to use this application, but you can register yourself below]"
-    )
+    st.write(":red[Please register yourself below]")
     with st.form(key="register_manager_form", clear_on_submit=False):
         # We take the information from st.session_state.login_user because this user is not authorized in our system
         if login_user := st.session_state.get("login_user", None):
@@ -994,7 +1032,7 @@ def render_self_registration_form(title: str):
 
             st.divider()
             conditions_accepted = st.checkbox(
-                label="I confirm that I am authorized to access this application",
+                label="I confirm that I'm a NielsenIQ TeachLead or Manager and authorized to access this application",
                 value=False,
                 key="users_user_terms_accepted_checkbox",
             )
@@ -1005,7 +1043,6 @@ def render_self_registration_form(title: str):
                 #                ],
             ):
                 if conditions_accepted:
-                    init_session_state()  # Make sure we have the roles in the session state
                     if not validate_email(email):
                         st.error(f"Invalid Email: {email!a}")
                     account_name = account_name.upper()
@@ -1064,13 +1101,14 @@ def render_self_registration_form(title: str):
 
 def send_user_registration_request(
     *, account_name: str, display_name: str, email: str, job_title: str
-):
-    email_to = "support@acme.com"
+) -> bool:
+    """Send the users registration request to us"""
+    email_to = "kai.poitschke@nielseniq.com"  # "cloudcoesreteam@nielseniq.com"
     message = f"""
---- Message send via UI from {display_name} <{email}>
+--- Message send via NIQ APP METADATA UI from {display_name} <{email}>
 Click "reply" to answer the user.
 
-USER REGISTRATION REQUEST FOR UI:
+USER REGISTRATION REQUEST FOR NIQ APP METADATA UI:
 
 Username: {account_name}
 Display Name: {display_name}
@@ -1078,5 +1116,24 @@ Email: {email}
 Job Title: {job_title}
 
 """
-    st.error("Mail not implemented")
+    api_key = settings.SENDGRID_API_KEY
+    if api_key is None:
+        st.error(
+            "Configuration Error. Please set env variable SENDGRID_API_KEY"
+        )
+        st.stop()
+
+    status = send_email(
+        sendgrid_api_key=api_key,
+        mail_from="cloudcoenoreply@nha.nielseniq.com",
+        subject="NIQ APP METADATA UI: User Registration Request",
+        email_to=[email_to],
+        email_cc=[],
+        reply_to=email,
+        email_body=message,
+        content_type="text/plain",
+    )
+    if status != 202:
+        st.error(f"Oops! Something went wrong (email status: {status})")
+        return False
     return True

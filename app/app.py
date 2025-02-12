@@ -53,6 +53,36 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 LayoutType: TypeAlias = Literal["centered", "wide"]
 
 
+def get_role_manager():
+    """Returns the role manager from the policy enforcer"""
+    return get_policy_enforcer().get_role_manager()
+
+
+def roles_of_role(role: str, role_manager) -> list[str]:
+    """Returns the roles of a role. Assigned in the policy.csv"""
+    return role_manager.get_roles(role)
+
+
+def get_all_roles(role: str, seen: set[str], role_manager) -> None:
+    """Get all roles of a role recursive. Drill down into each role to find other role to tole assignments"""
+    if role in seen:
+        return
+    seen.add(role)
+    for sub_role in roles_of_role(role, role_manager):
+        get_all_roles(sub_role, seen, role_manager)
+
+
+def get_all_roles_of_roles(roles: set[str]) -> set[str]:
+    """Get all roles of a role. Drill down into each role to find other role to tole assignments"""
+    role_manager = (
+        get_role_manager()
+    )  # Retrieve role manager once to avoid redundant calls
+    all_roles: set[str] = set()
+    for role in roles:
+        get_all_roles(role, all_roles, role_manager)
+    return all_roles
+
+
 def update_user_record(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> None:
@@ -104,16 +134,19 @@ def update_user_session_state(
     current_user: dict[str, Any] = {
         "username": pati.name,
         "display_name": pati.display_name,
-        "email": pati.email or user["email"],
+        "email": pati.email,
     }
     if pati.roles or pati.org_units or pati.proxy_of:
         logger.debug(
             f"update_user_session_state: compute effective roles for: {pati.name}"
         )
+        # roles directly assigned or via org
         current_user["roles"] = pati_repo.compute_effective_roles(pati)
-        current_user["effective_roles"] = compute_effective_app_roles(
+        current_user["effective_roles"] = get_all_roles_of_roles(
             current_user["roles"]
-        )  # current_user["roles"].copy()
+        )  # compute_effective_app_roles(
+        #  current_user["roles"]
+        # )  # current_user["roles"].copy()
         # Copy the effective roles into the casbin enforcer
     else:
         current_user["effective_roles"] = set()
@@ -122,11 +155,11 @@ def update_user_session_state(
     if pati.org_units:
         current_user["org_units"] = set([ou.name for ou in pati.org_units])
 
-    # st.session_state["username"] = pati.name
-    # st.session_state["user_display_name"] = pati.display_name
-    # st.session_state["user_email"] = pati.email
+    st.session_state["username"] = pati.name
+    st.session_state["user_display_name"] = pati.display_name
+    st.session_state["user_email"] = pati.email
     # current_user["user_object"] = pati.model_dump()
-    current_user["title"] = user["title"]
+    current_user["title"] = user.get("title") or "unknown"
     st.session_state["current_user"] = current_user
 
 
@@ -287,6 +320,22 @@ def render_sidebar(auth: Authenticate, user: dict[str, Any]) -> None:
                         args=(r, key),
                         key=key,
                     )
+            st.divider()
+            # because I am too lazy to type the param in the url. Added this shortcut
+            if st.checkbox(
+                "Debug Menu", value=st.query_params.get("debug", "0") == "1"
+            ):
+                st.query_params["debug"] = "1"
+            else:
+                if st.query_params.get("debug"):
+                    del st.query_params["debug"]
+
+            if is_administrator(st.session_state.username):
+                if st.button("Clear caches"):
+                    logger.info(
+                        "Clear caches was requested via user interface."
+                    )
+                    st.cache_data.clear()
 
 
 def init_session_state() -> None:
