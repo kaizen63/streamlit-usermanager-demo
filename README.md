@@ -5,7 +5,7 @@ Streamlit user interface to maintain Users, Groups, Org Units.
 ## Status
 
 [![Docker Image CI](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/docker-image.yml/badge.svg)](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/docker-image.yml)
-[![Python application](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/python-app.yml/badge.svg)](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/python-app.yml)
+[![Python application](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/python-app.yml/badge.svg)](https://github.com/kaizen63/streamlit-usermanager-demo/actions/workflows/lint-and-test.yml)
 
 
 ## Quickstart using Docker
