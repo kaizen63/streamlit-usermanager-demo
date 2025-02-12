@@ -173,10 +173,7 @@ class ParticipantRelationRepository(RepositoryBase):
             logger.exception(f"exists: {id=} - {e}")
             raise
         else:
-            if result:
-                return True
-            else:
-                return False
+            return True if result else False
 
     def create(
         self,

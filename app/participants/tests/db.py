@@ -23,52 +23,55 @@ def is_sqlite(engine: Engine) -> bool:
 
 
 @functools.cache
-def is_sqlserver(engine) -> bool:
+def is_sqlserver(engine: Engine) -> bool:
     """Returns True if the engine is a sqlserver"""
     inspector = inspect(engine)
     return "mssql" in inspector.dialect.name.lower()
 
 
 def get_url(db_engine: str | None = None) -> str:
-    """Returns the db_url. If db_engine is None we read it from env variable DB_ENGINE"""
-    if db_engine is None:
-        db_engine = os.getenv("DB_ENGINE")
+    """Returns the database URL, defaulting to the DB_ENGINE environment variable if not provided."""
+
+    db_engine = db_engine or os.getenv("DB_ENGINE")
+
+    if not db_engine:
+        raise ValueError(
+            "Database engine must be specified either as an argument or via the DB_ENGINE environment variable"
+        )
 
     db_server = urllib.parse.quote_plus(os.getenv("DB_SERVER", ""))
-    if port_s := os.getenv("DB_PORT"):
-        db_port = int(port_s)
-    else:
-        db_port = None
-
+    db_port = int(os.getenv("DB_PORT", "0")) or None
     db_username = urllib.parse.quote_plus(os.getenv("DB_USERNAME", ""))
     db_password = urllib.parse.quote_plus(os.getenv("DB_PASSWORD", ""))
-    db_database = urllib.parse.quote_plus(os.getenv("DB_DATABASE", ""))
+    db_database = (
+        os.getenv("DB_DATABASE", "")
+        if db_engine == "sqlite"
+        else urllib.parse.quote_plus(os.getenv("DB_DATABASE", ""))
+    )
     db_driver = urllib.parse.quote_plus(os.getenv("DB_DRIVER", ""))
-    # db_schema = os.getenv("DB_SCHEMA")
 
-    if db_engine == "sqlite":
-        db_database = os.getenv("DB_DATABASE", "")  # No quoting for sqlite
-
-    if db_engine == "mssql":
-        db_url = f"mssql+pyodbc://{db_username}:{db_password}@{db_server}:{db_port}/{db_database}?driver={db_driver}"
-    elif db_engine == "postgresql":  # Postgres:
-        db_url = f"postgresql+psycopg2://{db_username}:{db_password}@{db_server}:{db_port}/{db_database}"
-    elif db_engine == "sqlite":
-        db_url = f"sqlite:///{db_database}"
-    else:
-        raise ValueError(f"db_engine {db_engine} not supported")
-
-    return db_url
+    match db_engine:
+        case "mssql":
+            return f"mssql+pyodbc://{db_username}:{db_password}@{db_server}:{db_port}/{db_database}?driver={db_driver}"
+        case "postgres":
+            return f"postgresql+psycopg2://{db_username}:{db_password}@{db_server}:{db_port}/{db_database}"
+        case "sqlite":
+            return f"sqlite:///{db_database}"
+        case _:
+            raise ValueError(f"Unsupported database engine: {db_engine!a}")
 
 
 def create_db_engine(
     db_url: str, db_schema: str | None = None, echo: bool = False
 ) -> Any:
-    """Creates a context with an open SQLAlchemy session. Provide schema for postgresql
-    to be passed as search path to postgresql"""
+    """Creates a database engine for the given URL. Use this if you do not want to use st.connection.
+    Use case: Initialize the database before startup."""
+
+    connect_args: dict[str, str | int | bool] = {}
     use_setinputsizes = None
+
     if db_url.startswith("postgres"):
-        connect_args: dict[str, Any] = {
+        connect_args = {
             "sslmode": "require",
             "options": f"-csearch_path={db_schema}",
         }
@@ -76,30 +79,20 @@ def create_db_engine(
         connect_args = {"check_same_thread": False}
     elif db_url.startswith("mssql"):
         connect_args = {
-            "check_same_thread": False,
             "TrustServerCertificate": "yes",
             "Encrypt": "yes",
             "autocommit": False,
         }
         use_setinputsizes = False
 
-    else:
-        connect_args = dict()
-    if use_setinputsizes is None:
-        engine = create_engine(
-            db_url,
-            connect_args=connect_args,
-            echo=echo,
-        )
-    else:
-        engine = create_engine(
-            db_url,
-            connect_args=connect_args,
-            echo=echo,
-            use_setinputsizes=use_setinputsizes,
-        )
+    engine_params: dict[str, Any] = {
+        "connect_args": connect_args,
+        "echo": echo,
+    }
+    if use_setinputsizes is not None:
+        engine_params["use_setinputsizes"] = use_setinputsizes
 
-    return engine
+    return create_engine(db_url, **engine_params)
 
 
 def create_db_and_tables(engine: Engine) -> None:

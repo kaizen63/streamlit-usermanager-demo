@@ -4,7 +4,7 @@ Repositories for participants
 
 import logging
 from datetime import datetime, timezone
-from typing import Literal, Optional, cast
+from typing import Literal, Optional, cast, TypeAlias
 
 from pydantic import ValidationError
 from sqlalchemy import Select
@@ -33,6 +33,8 @@ from .participant_relation import (
 )
 
 logger = logging.getLogger("participants")
+
+KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]
 
 
 class ParticipantNotFoundError(Exception):
@@ -80,8 +82,7 @@ class ParticipantRepository(RepositoryBase):
             if result is None:
                 if raise_error_if_not_found:
                     raise ParticipantNotFoundError
-                else:
-                    return None
+                return None
 
             pati = Participant(**result.model_dump())
             if include_relations:
@@ -120,8 +121,7 @@ class ParticipantRepository(RepositoryBase):
             if result is None:
                 if raise_error_if_not_found:
                     raise ParticipantNotFoundError
-                else:
-                    return None
+                return None
 
             pati = Participant(**result.model_dump())
             if include_relations:
@@ -151,8 +151,7 @@ class ParticipantRepository(RepositoryBase):
             if result is None:
                 if raise_error_if_not_found:
                     raise ParticipantNotFoundError
-                else:
-                    return None
+                return None
             pati = Participant(**result.model_dump())
             if include_relations:
                 self.set_relations(pati, include_proxies)
@@ -160,7 +159,7 @@ class ParticipantRepository(RepositoryBase):
 
     def exists(
         self,
-        column: Literal["id", "name", "display_name"],
+        column: KeyColumnLiteral,
         value: int | str,
         participant_type: ParticipantType,
     ) -> bool | str:
@@ -169,42 +168,45 @@ class ParticipantRepository(RepositoryBase):
             False if the participant does not exists
             The state (ACTIVE or TERMINATED) if the user exists
         """
-        if participant_type not in [str(m) for m in ParticipantType]:
+        if participant_type not in ParticipantType.__members__.values():
             raise ValueError("Wrong participant_type: {participant_type}")
 
-        if column.lower() not in {"id", "name", "display_name"}:
+        column = column.lower()
+        if column not in set(KeyColumnLiteral.__args__):
             raise ValueError(
                 f"Wrong column {column!a} provided. Allowed values are: id, name, display_name"
             )
 
-        if column.lower() == "name":
-            pati: Participant | None = self.get_by_name(
-                cast(str, value),
-                participant_type,
-                raise_error_if_not_found=False,
-            )
+        # Define column to lookup method mapping
+        lookup_methods = {
+            "name": self.get_by_name,
+            "id": self.get_by_id,
+            "display_name": self.get_by_display_name,
+        }
+
+        # Lookup the appropriate method based on column
+        if column in lookup_methods:
+            # Ensure `value` type matches expected type for the column
+            if column == "id" and not isinstance(value, int):
+                return False
+            if column in ["name", "display_name"] and not isinstance(
+                value, str
+            ):
+                return False
+
+            # Perform the lookup
+            if column == "id":
+                pati = lookup_methods[column](
+                    value, raise_error_if_not_found=False
+                )
+            else:
+                pati = lookup_methods[column](
+                    value, participant_type, raise_error_if_not_found=False
+                )
+
             return str(pati.state) if pati else False
-        elif column.lower() == "id":
-            pati = self.get_by_id(
-                cast(int, value), raise_error_if_not_found=False
-            )
-            return str(pati.state) if pati else False
-        elif column.lower() == "name":
-            pati = self.get_by_name(
-                cast(str, value),
-                participant_type,
-                raise_error_if_not_found=False,
-            )
-            return str(pati.state) if pati else False
-        elif column.lower() == "display_name":
-            pati = self.get_by_display_name(
-                cast(str, value),
-                participant_type,
-                raise_error_if_not_found=False,
-            )
-            return str(pati.state) if pati else False
-        else:
-            return False
+
+        return False
 
     def get_all(
         self,
@@ -240,13 +242,13 @@ class ParticipantRepository(RepositoryBase):
 
             result: list[ParticipantModel] = self.session.exec(statement).all()
         except Exception as e:
-            logger.exception(f"get_all_id: {id=} - {e}")
+            logger.exception(f"get_all: - {e}")
             raise
         else:
             participants = [Participant(**r.model_dump()) for r in result]
 
             if include_relations:
-                _ = [self.set_relations(p) for p in participants]
+                [self.set_relations(p) for p in participants]
             return participants
 
     def set_relations(
@@ -291,10 +293,12 @@ class ParticipantRepository(RepositoryBase):
                 )
                 if not proxies:
                     return participant
-                participant.proxies = []
-                for r in proxies:
-                    if r.participant.state == ParticipantState.ACTIVE.value:
-                        participant.proxies.append(r.participant)
+                participant.proxies = participant.proxies = [
+                    r.participant
+                    for r in proxies
+                    if r.participant.state == ParticipantState.ACTIVE.value
+                ]
+
         return participant
 
     def compute_effective_roles(self, participant: Participant) -> set[str]:
@@ -308,25 +312,23 @@ class ParticipantRepository(RepositoryBase):
             f"Participant: {participant.name}, num_roles: {len(participant.roles)}, "
             + f"num_orgs: {len(participant.org_units)}, num_proxy_of: {len(participant.proxy_of)}"
         )
-        effective_roles: set[str] = set()
+        effective_roles: set[str] = {role.name for role in participant.roles}
         with ParticipantRelationRepository(self.session) as rel_repository:
-            for g in participant.roles:
-                effective_roles.add(g.name)
-            for ou in participant.org_units:
-                relations: Optional[list[RelatedParticipant]] = (
-                    rel_repository.get(ou.id, relation_type=("GRANT",))
-                )
-                if not relations:
-                    continue
-                for r in relations:
-                    effective_roles.add(r.participant.name)
-            for p in participant.proxy_of:
-                # get the roles granted to this participant
-                relations = rel_repository.get(p.id, relation_type=("GRANT",))
-                if not relations:
-                    continue
-                for r in relations:
-                    effective_roles.add(r.participant.name)
+            # Helper function to get roles for a list of participants
+            def get_granted_roles(participants: list[Participant]) -> set[str]:
+                roles = set()
+                for pati in participants:
+                    relations = rel_repository.get(
+                        pati.id, relation_type=("GRANT",)
+                    )
+                    if relations:
+                        roles.update(r.participant.name for r in relations)
+                return roles
+
+            # Add roles from org_units and proxies
+            effective_roles.update(get_granted_roles(participant.org_units))
+            effective_roles.update(get_granted_roles(participant.proxy_of))
+
         participant.effective_roles = effective_roles
         return participant.effective_roles
 
@@ -343,10 +345,11 @@ class ParticipantRepository(RepositoryBase):
             return participant
 
         try:
+            now = datetime.now(timezone.utc)
             result = self.session.exec(
                 update(ParticipantModel)
                 .where(ParticipantModel.id == participant.id)
-                .values(state=state)
+                .values(state=state, updated_timestamp=now)
             )
             self.session.flush()
         except Exception as e:

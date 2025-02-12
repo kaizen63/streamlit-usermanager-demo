@@ -1,4 +1,4 @@
-""" Imports all model and repository related classes"""
+"""Imports all model and repository related classes"""
 
 from .participant import (
     ParticipantModel,

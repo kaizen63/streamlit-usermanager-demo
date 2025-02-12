@@ -53,11 +53,8 @@ class ParticipantRelationBase(SQLModel):
 
     @classmethod
     def get_field_names(cls, alias: bool = False) -> list[str]:
-        properties = cls.model_json_schema(alias).get("properties")
-        if properties:
-            return list(properties.keys())
-        else:
-            return []
+        properties = cls.model_json_schema(alias).get("properties", {})
+        return list(properties.keys())
 
     @field_validator(
         "relation_type",
@@ -65,18 +62,14 @@ class ParticipantRelationBase(SQLModel):
     )
     @classmethod
     def enum_to_string(cls, v: str, info: ValidationInfo) -> Optional[str]:
-        if isinstance(v, StrEnum):
-            return str(v)
-        return v
+        return str(v) if isinstance(v, StrEnum) else v
 
     @field_validator("created_by")
     @classmethod
     def to_uppercase(cls, v: str | None, info: ValidationInfo) -> str | None:
         """Uppercase a field"""
-        if v is None:
-            return v
-        else:
-            return v.upper()
+
+        return v.upper() if v else v
 
 
 class ParticipantRelationModel(ParticipantRelationBase, table=True):

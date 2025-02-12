@@ -107,20 +107,15 @@ Use this before storing back the record. Must be used in combination with a row 
 
     @classmethod
     def get_field_names(cls, alias: bool = False) -> list[str]:
-        properties = cls.model_json_schema(alias).get("properties")
-        if properties:
-            return list(properties.keys())
-        else:
-            return []
+        properties = cls.model_json_schema(alias).get("properties", {})
+        return list(properties.keys())
 
     @field_validator("state", "participant_type", mode="before")
     @classmethod
     def enum_to_string(cls, v: str, info: ValidationInfo) -> Optional[str]:
         if info.field_name == "state" and v is None:
             return "ACTIVE"
-        if isinstance(v, StrEnum):
-            return str(v)
-        return v
+        return str(v) if isinstance(v, StrEnum) else v
 
     @field_validator(
         "email",
@@ -130,9 +125,7 @@ Use this before storing back the record. Must be used in combination with a row 
         cls, v: str | None, info: ValidationInfo
     ) -> str | None:
         """Checks the email"""
-        if v is None:
-            return v
-        if not validate_email(v):
+        if v and not validate_email(v):
             raise ValueError(
                 f"Invalid email address: {v!a} in {info.field_name}"
             )
@@ -142,10 +135,7 @@ Use this before storing back the record. Must be used in combination with a row 
     @classmethod
     def to_uppercase(cls, v: str | None, info: ValidationInfo) -> str | None:
         """Uppercases a field"""
-        if v is None:
-            return v
-        else:
-            return v.upper()
+        return v.upper() if v else v
 
 
 class ParticipantModel(ParticipantBase, table=True):
@@ -210,30 +200,28 @@ class Participant(ParticipantBase):
     @field_validator("state", mode="after")
     @classmethod
     def validate_state(cls, v: str | None) -> str | None:
-        if v is None:
-            return "ACTIVE"
-        else:
-            return v
+        return "ACTIVE" if not v else v
 
     @staticmethod
     def find_by_id(
         participants: list["Participant"], participant_id: int
     ) -> Optional["Participant"]:
         """Get a participant by his id"""
-        for p in participants:
-            if p.id == participant_id:
-                return p
-        return None
+        return next((p for p in participants if p.id == participant_id), None)
 
     @staticmethod
     def find_by_name(
         participants: list["Participant"], name: str, participant_type: str
     ) -> Optional["Participant"]:
         """Get a participant by his name and participant_type"""
-        for p in participants:
-            if p.name == name and p.participant_type == participant_type:
-                return p
-        return None
+        return next(
+            (
+                p
+                for p in participants
+                if p.name == name and p.participant_type == participant_type
+            ),
+            None,
+        )
 
     @staticmethod
     def find_by_display_name(
@@ -242,13 +230,15 @@ class Participant(ParticipantBase):
         participant_type: str,
     ) -> Optional["Participant"]:
         """Get a participant by his display name and participant_type"""
-        for p in participants:
-            if (
-                p.display_name == display_name
+        return next(
+            (
+                p
+                for p in participants
+                if p.display_name == display_name
                 and p.participant_type == participant_type
-            ):
-                return p
-        return None
+            ),
+            None,
+        )
 
 
 class ParticipantCreate(ParticipantBase):
@@ -258,11 +248,9 @@ class ParticipantCreate(ParticipantBase):
     def validate_name(
         cls, v: Optional[str], info: ValidationInfo
     ) -> Optional[str]:
-        if v is None:
-            return v
-        if not is_valid_name(v):
+        if v and not is_valid_name(v):
             raise ValueError(f"Invalid name: {v}")
-        return v.upper()
+        return v.upper() if v else v
 
 
 class ParticipantUpdate(SQLModel):
@@ -306,20 +294,14 @@ class ParticipantUpdate(SQLModel):
 
     @classmethod
     def get_field_names(cls, alias: bool = False) -> list[str]:
-        properties = cls.model_json_schema(alias).get("properties")
-        if properties:
-            return list(properties.keys())
-        else:
-            return []
+        properties = cls.model_json_schema(alias).get("properties", {})
+        return list(properties.keys())
 
     @field_validator("name", "updated_by")
     @classmethod
     def to_uppercase(cls, v: str | None, info: ValidationInfo) -> str | None:
         """Uppercases a field"""
-        if v is None:
-            return v
-        else:
-            return v.upper()
+        return v.upper() if v else v
 
 
 class RelatedParticipant(SQLModel):

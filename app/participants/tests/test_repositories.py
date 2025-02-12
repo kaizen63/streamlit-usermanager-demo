@@ -30,7 +30,7 @@ db_url = get_url(db_engine)
 engine: Engine = create_db_engine(db_url)
 
 
-def get_session_generator(engine: Engine) -> Generator:
+def get_session_generator(engine: Engine) -> Generator[Session, None, None]:
     session = Session(bind=engine)
     try:
         _ = session.connection()
@@ -270,6 +270,11 @@ def test_pati_exists() -> None:
         assert exists == "ACTIVE"
 
         exists = repo.exists("name", "POITSCHKKA02", ParticipantType.HUMAN)
+        assert exists == "ACTIVE"
+
+        exists = repo.exists(
+            "display_name", "Poitschke, Kai2", ParticipantType.HUMAN
+        )
         assert exists == "ACTIVE"
 
         not_exists = repo.exists("id", -1, ParticipantType.HUMAN)
@@ -858,7 +863,7 @@ def test_pati_terminate() -> None:
         pati: Participant = repo.create(user_create)
         assert pati is not None
 
-        updated_user = repo.terminate_participant(pati, ParticipantType.HUMAN)
+        updated_user = repo.terminate_participant(pati)
         assert updated_user is not None
         assert updated_user.state == "TERMINATED"
         repo.rollback()
@@ -876,7 +881,7 @@ def test_pati_activate() -> None:
         pati: Participant = repo.create(user_create)
         assert pati is not None
 
-        updated_user = repo.activate_participant(pati, ParticipantType.HUMAN)
+        updated_user = repo.activate_participant(pati)
         assert updated_user is not None
         assert updated_user.state == "ACTIVE"
         repo.rollback()
