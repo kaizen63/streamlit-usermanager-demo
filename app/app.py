@@ -236,7 +236,6 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
                 return "You are not authorized to login"
 
 
-
 def initialize_manager_user(user: UserInfos, username: str) -> None:
     """Initialize a manager user session with limited roles."""
     current_user: CurrentUser = CurrentUser(
@@ -283,47 +282,66 @@ def role_checkbox_callback(role, key) -> None:
     return
 
 
+def render_user_roles(
+    title: str, all_roles: list[str], users_effective_roles: set[str]
+) -> None:
+    """Render the tickboxes with user roles on the sidebar"""
+    st.write(title)
+    if "PUBLIC" in all_roles:
+        all_roles.remove("PUBLIC")
+    for i, role in enumerate(all_roles):
+        key = f"sidebar_roles_{i}"
+        value = role in users_effective_roles
+        st.checkbox(
+            role,
+            value=value,
+            disabled=False,
+            on_change=role_checkbox_callback,
+            args=(role, key),
+            key=key,
+        )
+
+
 def render_sidebar(auth: Authenticate, user: dict[str, Any]) -> None:
     """Render the sidebar"""
+
+    def render_logout_form(user: str):
+        """Renders the logout form"""
+        (
+            auth.createLogoutForm(
+                config={
+                    "message": "",
+                    "title": {
+                        "text": f"Welcome {user}",
+                        "size": "small",
+                    },
+                },
+                callback=signout_callback,
+            )
+            if auth
+            else st.write(f"Welcome {user}")
+        )
+
+    current_user = CurrentUser.get_from_session_state()
+    if not current_user:
+        return
     with st.sidebar:
         # st.sidebar.title(f"Welcome {user['displayName']}")
         # display_user = get_st_current_user()
         st.write("### Welcome: " + get_st_current_user().display_name)
-        # auth.createLogoutForm(
-        #    #            {"message": f"Welcome {display_user}"},
-        #    {"title": {"text": f"Welcome {display_user}", "size": "small"}},
-        #    callback=signout_callback,
-        # )
+        # render_logout_form()
         st.divider()
-        current_user = CurrentUser.get_from_session_state()
-        if not current_user:
-            return
+
         # Use a new policy enforcer, so the files are read again. We need to know
         # when a policy has changed. e.g. when the SUPERADMIN is granted and revoked
         if is_administrator(current_user.username):
-            user_roles = list(current_user.roles)
-            # I must be an Administrator, directly assigned to show the roles.
-            # if not AppRoles.ADMINISTRATOR in user_roles:
-            #    return
+            user_roles: list[str] = sorted(
+                list(get_all_roles_of_roles(current_user.roles))
+            )
+            effective_roles = current_user.effective_roles
 
-            effective_roles = compute_effective_app_roles(user_roles)
-            current_effective_roles = current_user.effective_roles
+            render_user_roles("Your roles:", user_roles, effective_roles)
 
-            sorted_roles = sorted(effective_roles)
-
-            st.write("Your roles:")
-            for i, r in enumerate(sorted_roles):
-                if r != "PUBLIC":
-                    key = f"sidebar_roles_{i}"
-                    value = r in current_effective_roles
-                    st.checkbox(
-                        r,
-                        value=value,
-                        disabled=False,
-                        on_change=role_checkbox_callback,
-                        args=(r, key),
-                        key=key,
-                    )
             st.divider()
             # because I am too lazy to type the param in the url. Added this shortcut
             if st.checkbox(
