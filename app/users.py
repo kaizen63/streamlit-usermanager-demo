@@ -11,7 +11,6 @@ from common import (
     compare_lists,
     get_policy_enforcer,
     is_administrator,
-    CurrentUser,
 )
 from participant_utilities import (
     get_participant_by_display_name,
@@ -952,7 +951,7 @@ def render_self_registration_form(title: str) -> None:
     """Self-service for managers to create themselves as users"""
     st.write(title)
     st.write(":red[Please register yourself below]")
-    if not (current_user := CurrentUser.get_from_session_state()):
+    if not (login_user := st.session_state["login_user"]):
         st.error("Oops! Something went wrong")
         st.stop()
 
@@ -960,13 +959,13 @@ def render_self_registration_form(title: str) -> None:
         # We take the information from st.session_stat  because this user is not authorized in our system
         username = st.text_input(
             label="EnterpriseID",
-            value=current_user.username,
+            value=login_user["username"],
         )
         display_name = st.text_input(
-            label="Display Name", value=current_user.display_name
+            label="Display Name", value=login_user["display_name"]
         )
-        email = st.text_input(label="Email", value=current_user.email)
-        job_title = st.text_input(label="Job Title", value=current_user.title)
+        email = st.text_input(label="Email", value=login_user["email"])
+        job_title = st.text_input(label="Job Title", value=login_user["title"])
 
         st.divider()
         conditions_accepted = st.checkbox(
@@ -979,8 +978,8 @@ def render_self_registration_form(title: str) -> None:
                 if not validate_email(email):
                     st.error(f"Invalid Email: {email!a}")
                 username = username.upper()
-                if username != current_user.username and not is_administrator(
-                    current_user.username
+                if username != login_user.username and not is_administrator(
+                    login_user["username"]
                 ):
                     st.error("You cannot create an account for someone else")
                     st.stop()
