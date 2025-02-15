@@ -63,7 +63,7 @@ def get_home_label() -> str:
 
 
 def generate_menu_items(
-    permissions: dict[str, bool], debug_on: bool
+    permissions: dict[str, bool]
 ) -> tuple[list[str], list[str]]:
     """Generate menu options and corresponding icons based on permissions."""
 
@@ -75,18 +75,19 @@ def generate_menu_items(
         ("Roles", "mortarboard") if permissions["read_roles"] else None,
         ("Orgs", "building") if permissions["read_orgs"] else None,
         ("About", "info-circle"),
-        ("Debug", "bug") if debug_on else None,
+        ("Debug", "bug") if st.query_params.get("debug", "0") == "1" else None,
     ]
 
     # Remove None values and unpack into separate lists
-    options, icons = zip(*[item for item in menu_items if item])
-
-    return list(options), list(icons)
+    options = [item[0] for item in menu_items if item]
+    icons = [item[1] for item in menu_items if item]
+    return options, icons
+    # options, icons = zip(*[item for item in menu_items if item])
+    # return list(options), list(icons)
 
 
 def render_main_menu() -> None:
     """Renders the main menu of the application"""
-    debug_on = st.query_params.get("debug", "0") == "1"
     title = st.query_params.get("title")
 
     user = st.session_state["current_user"]
@@ -100,7 +101,7 @@ def render_main_menu() -> None:
 
     permissions = get_user_permissions(username)
     logger.debug(f"User {username} has these permissions: {permissions}")
-    options, icons = generate_menu_items(permissions, debug_on)
+    options, icons = generate_menu_items(permissions)
 
     # Determine menu selection
     menu_selection = st.query_params.get("menu")
