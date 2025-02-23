@@ -14,6 +14,7 @@ from dataframe_utilities import (
 )
 from db import get_db
 from participants import Participant, ParticipantRepository
+from typing import Any
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -104,9 +105,10 @@ def render_participants_table(title: str):
                 ParticipantsTableHeader.UPDATED_TIMESTAMP,
             ],
             key_prefix="homepage_pati_filter",
+            select_column="PatiType",
         )
         df = render_sort_menu(df, key_prefix="homepage_pati_sort")
-        st.write(f"[{len(df)}]")
+        st.write(f"[{count}]")
 
     displayed_df, page_size = paginate_df(
         df, key_prefix="homepage_pati_paginate"
@@ -115,7 +117,7 @@ def render_participants_table(title: str):
     pagination = st.container(height=None)
     height = calculate_height(df, page_size)
 
-    column_config = {
+    column_config: dict[str, Any] = {
         ParticipantsTableHeader.ID: st.column_config.NumberColumn(
             format="%4f"
         ),
