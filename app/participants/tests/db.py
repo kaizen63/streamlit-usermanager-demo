@@ -1,4 +1,3 @@
-import functools
 import logging
 import os
 import urllib
@@ -16,14 +15,12 @@ logger = logging.getLogger(__name__)
 #    return get_secret(keyvault, secret) or ""
 
 
-@functools.cache
 def is_sqlite(engine: Engine) -> bool:
     """Returns True if the engine is sqlite"""
     inspector = inspect(engine)
     return "sqlite" in inspector.dialect.name.lower()
 
 
-@functools.cache
 def is_sqlserver(engine: Engine) -> bool:
     """Returns True if the engine is a sqlserver"""
     inspector = inspect(engine)
