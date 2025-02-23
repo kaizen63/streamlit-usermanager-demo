@@ -1,19 +1,20 @@
 """Connects us to the database via streamlits SQLConnection which is a wrapper around SQLAlchemy"""
 
-from sqlalchemy import inspect, Engine
+import functools
 import logging
 import os
 import urllib
-from sqlmodel import SQLModel
+from typing import Any, Generator
+
 import streamlit as st
 from config import settings
-from streamlit.connections import SQLConnection
-from who_called_me import who_called_me
-from typing import Any, Generator
-import functools
+from sqlalchemy import inspect
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import PendingRollbackError
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
+from streamlit.connections import SQLConnection
+from who_called_me import who_called_me
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

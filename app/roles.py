@@ -5,28 +5,23 @@ import time
 from typing import Optional, Union
 
 import streamlit as st
-
-from common import (
-    get_policy_enforcer,
-    check_access,
-)
+from common import check_access, get_policy_enforcer, safe_index
+from config import settings
+from db import get_db
 from participant_utilities import (
     get_participant_by_name,
     get_roles,
 )
-
-from config import settings
 from participants import (
     Participant,
     ParticipantCreate,
+    ParticipantRelationRepository,
     ParticipantRepository,
     ParticipantState,
     ParticipantType,
     ParticipantUpdate,
     is_valid_name,
-    ParticipantRelationRepository,
 )
-from db import get_db
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -47,12 +42,8 @@ def render_roles_selectbox() -> Optional[Participant]:
     )
     key = "roles_selectbox"
     selected_key = f"{key}_selected"
-    index = (
-        roles.index(st.session_state[selected_key])
-        if selected_key in st.session_state
-        and st.session_state[selected_key] in roles
-        else 0
-    )
+    index = safe_index(roles, selected_key)
+    index = safe_index(roles, st.session_state.get(selected_key), 0)
 
     selected = st.selectbox(
         label="Select a role", options=roles, key=key, index=index

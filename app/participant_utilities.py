@@ -1,15 +1,15 @@
 """Interface to participants"""
 
 import logging
-import streamlit as st
-from participants import Participant, ParticipantRepository, ParticipantType
-from config import settings
-from db import get_db
-from codetiming import Timer
-from humanfriendly import format_timespan
-from who_called_me import who_called_me
 from typing import Callable, Literal, TypeAlias
 
+import streamlit as st
+from codetiming import Timer
+from config import settings
+from db import get_db
+from humanfriendly import format_timespan
+from participants import Participant, ParticipantRepository, ParticipantType
+from who_called_me import who_called_me
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

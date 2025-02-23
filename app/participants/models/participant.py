@@ -1,27 +1,22 @@
+import re
 from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Literal, Optional, TypeAlias
-import os
-import re
+
 from pydantic import (
     EmailStr,
     ValidationInfo,
     field_validator,
 )
-
-from sqlalchemy import UniqueConstraint, CheckConstraint
+from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
 from sqlmodel._compat import SQLModelConfig
+from validate_email import validate_email
+
+from .db_schema import schema
 from .participant_relation import (
     ParticipantRelationTypeLiteral,
 )
-from validate_email import validate_email
-
-schema = os.getenv("DB_SCHEMA")
-if schema:
-    schema_prefix = schema + "."
-else:
-    schema_prefix = ""
 
 
 class ParticipantType(StrEnum):
@@ -159,10 +154,14 @@ class ParticipantModel(ParticipantBase, table=True):
             "participant_type in (NULL, 'ACTIVE', 'TERMINATED')",
             name="participants_chk2",
         ),
-        {
-            "schema": schema,
-            "extend_existing": True,  # This should fix the error when rerun streamlit that the model exists
-        },
+        (
+            {
+                "schema": schema,
+                "extend_existing": True,  # This should fix the error when rerun streamlit that the model exists
+            }
+            if schema
+            else {"extend_existing": True}
+        ),
     )
     id: int | None = Field(default=None, primary_key=True)
     # redefine participant_type and state to strings to make the model work

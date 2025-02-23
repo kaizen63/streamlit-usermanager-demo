@@ -1,16 +1,16 @@
 """Functions called by other modules"""
 
 import logging
+
+# from pydantic import BaseModel, Field
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional, Union, Iterable
+from typing import Iterable, Optional, Union
 
 import casbin
 import streamlit as st
 from config import settings
-
-# from pydantic import BaseModel, Field
-from dataclasses import dataclass, field, asdict
 from streamlit_ldap_authenticator import UserInfos
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -182,3 +182,39 @@ def filter_list(
         for item in items
         if not any(word in item for word in exclude_keywords)
     ]
+
+
+def safe_index[T](
+    iterable: Iterable[T], item: T, default: int | None = None
+) -> int | None:
+    return next((i for i, x in enumerate(iterable) if x == item), default)
+
+
+def get_role_manager():
+    """Returns the role manager from the policy enforcer"""
+    return get_policy_enforcer().get_role_manager()
+
+
+def roles_of_role(role: str, role_manager) -> list[str]:
+    """Returns the roles of a role. Assigned in the policy.csv"""
+    return role_manager.get_roles(role)
+
+
+def get_all_roles(role: str, seen: set[str], role_manager) -> None:
+    """Get all roles of a role recursive. Drill down into each role to find other role to tole assignments"""
+    if role in seen:
+        return
+    seen.add(role)
+    for sub_role in roles_of_role(role, role_manager):
+        get_all_roles(sub_role, seen, role_manager)
+
+
+def get_all_roles_of_roles(roles: set[str]) -> set[str]:
+    """Get all roles of a role. Drill down into each role to find other role to tole assignments"""
+    role_manager = (
+        get_role_manager()
+    )  # Retrieve role manager once to avoid redundant calls
+    all_roles: set[str] = set()
+    for role in roles:
+        get_all_roles(role, all_roles, role_manager)
+    return all_roles

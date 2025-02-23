@@ -1,10 +1,11 @@
 """To display the debug page"""
 
-import streamlit as st
-from common import filter_list, check_access
-from config import settings
 import json
 import logging
+
+import streamlit as st
+from common import check_access, filter_list
+from config import settings
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

@@ -4,8 +4,8 @@ For databases supporting a schema, the env variable DB_SCHEMA must be set to a n
 For SQLite or others it must be set to an empty string
 """
 
-import os
 import logging
+import os
 from typing import Any, Self
 
 from sqlmodel import Session

@@ -9,6 +9,7 @@ import logging.config
 import os
 import time
 from pathlib import Path
+from typing import Union, cast
 
 import streamlit as st
 
@@ -21,7 +22,7 @@ class LogLevelInvalidError(Exception):
     pass
 
 
-def dequote(s):
+def dequote(s: str | None) -> str | None:
     """
     If a string has single or double quotes around it, remove them.
     Make sure the pair of quotes match.
@@ -36,7 +37,7 @@ def dequote(s):
 
 
 def setup_logging(
-    default_path: str | Path = "logging-conf.yaml",
+    default_path: Union[str, Path] = "logging-conf.yaml",
     default_level: int = logging.INFO,
     env_key: str = "LOGGING_CONFIG",
     log_in_utc: bool = True,
@@ -53,36 +54,29 @@ def setup_logging(
     Returns:
         None
     """
-    # Check if we have a logs directory:
-    # if Path("../logs").exists() is False:
-    #    Path("../logs").mkdir()
+    file_path = (
+        Path(cast(str, dequote(os.getenv(env_key, str(default_path)))))
+        .expanduser()
+        .resolve()
+    )
 
-    file_path = Path(default_path)
-    env_path = dequote(os.getenv(env_key, None))
-    if env_path:
-        file_path = Path(env_path)
+    log_path = file_path.parents[1] / "logs"
+    log_path.mkdir(exist_ok=True, parents=True)
 
-    log_path = Path(Path(file_path.absolute()).parent.parent, "logs")
-    if not log_path.exists():
-        log_path.mkdir()
-
-    if file_path.exists():
-        with open(file_path, "r") as f:
-            try:
-                config = yaml.safe_load(f.read())
-            except Exception as e:
-                print(f"Failed to process yaml in {file_path} - Error: {e}")
-            try:
-                logging.config.dictConfig(config)
-            except Exception as e:
-                print(
-                    f"Failed to setup logging with this config: {config} - Error: {e}"
-                )
-                logging.basicConfig(level=default_level)
-
-    else:
+    if not file_path.exists():
         logging.basicConfig(level=default_level)
-    # coloredlogs.install(level=default_level)
+        return
+    try:
+        with open(file_path, "r") as f:
+            config = yaml.safe_load(f)
+        logging.config.dictConfig(config)
+    except (yaml.YAMLError, OSError) as e:
+        logging.error(f"Failed to process YAML file {file_path}: {e}")
+        logging.basicConfig(level=default_level)
+    except Exception as e:
+        logging.error(f"Failed to set up logging with config {file_path}: {e}")
+        logging.basicConfig(level=default_level)
+
     if log_in_utc:
         logging.Formatter.converter = time.gmtime
 
@@ -90,32 +84,40 @@ def setup_logging(
 
 
 def get_level(level: str) -> int:
-    """Returns the log level number for a loglevel string string"""
-    if level is not None:
-        level_name_mapping = logging.getLevelNamesMapping()
-        if level := level_name_mapping.get(level.upper()):
-            return level
-
+    """Returns the log level number for a log level string."""
+    level_number = logging.getLevelNamesMapping().get(level.upper())
+    if level_number is not None:
+        return level_number
     raise LogLevelInvalidError(f"Not a valid log level: {level}")
 
 
 def set_log_level_from_env(
-    logger_name: str,
-    env_key: str = "LOGGING_LOG_LEVEL",
+    logger_name: str, env_key: str = "LOGGING_LOG_LEVEL"
 ) -> None:
-    """Sets the loglevel of the logger and root logger to a level, if not already set
-    env_key: The env variable holding the desired log level
+    """
+    Sets the log level of the specified logger and root logger based on an environment variable.
+
+    Args:
+        logger_name: Name of the logger to update.
+        env_key: The environment variable holding the desired log level.
     """
     logger = logging.getLogger(logger_name)
-    if logger.level == logging.NOTSET:
-        log_level = dequote(os.getenv(env_key, ""))
-        if log_level:
-            logger.info(f"Set loglevel to {log_level}")
-            level = get_level(log_level)
-            logger.setLevel(level)
-            if logger.root:
-                logger.root.setLevel(level)
-    return
+
+    if logger.level != logging.NOTSET:
+        return  # Skip if already set
+
+    log_level = dequote(os.getenv(env_key, "") or None)
+    if not log_level:
+        return  # No log level provided
+
+    logger.info(f"Setting log level to {log_level}")
+
+    try:
+        level = get_level(log_level)
+        logger.setLevel(level)
+        logger.root.setLevel(level)  # Directly set root level
+    except LogLevelInvalidError as e:
+        logger.error(f"Invalid log level from {env_key}: {log_level} - {e}")
 
 
 LOG_RECORD_BUILTIN_ATTRS = {
@@ -149,7 +151,7 @@ class MyJSONFormatter(logging.Formatter):
     """
     Custom formatter to format the log records as JSON.
     Is reading environment variables starting with LOGGER_ and adds them to the log but removing LOGGER_ and
-    lower casing the name.
+    lower case the name.
     Examples:
         - LOGGER_APPLICATIONNAME
         - LOGGER_SERVICE
@@ -164,7 +166,7 @@ class MyJSONFormatter(logging.Formatter):
         fmt_keys: dict[str, str] | None = None,
     ):
         super().__init__()
-        self.fmt_keys = fmt_keys if fmt_keys is not None else {}
+        self.fmt_keys = fmt_keys or {}
 
     @override
     def format(self, record: logging.LogRecord) -> str:
@@ -174,45 +176,55 @@ class MyJSONFormatter(logging.Formatter):
     def _prepare_log_dict(
         self, record: logging.LogRecord
     ) -> dict[str, str | None]:
-        always_fields = {
+        log_data = {
             "message": record.getMessage(),
             "timestamp": dt.datetime.fromtimestamp(
                 record.created, tz=dt.timezone.utc
             ).isoformat(),
+            "application_name": st.session_state.get("application_name", ""),
         }
         if st.session_state.get("current_user"):
-            user_info = {
-                "username": st.session_state.current_user["username"],
-                "user_display_name": st.session_state.current_user[
-                    "display_name"
-                ],
-            }
-            always_fields.update(user_info)
-        logger_env = {
-            k.lstrip("LOGGER_").lower(): v
-            for k, v in os.environ.items()
-            if k.startswith("LOGGER_")
-        }
-        always_fields.update(logger_env)
+            log_data.update(
+                {
+                    "username": st.session_state.current_user["username"],
+                    "user_display_name": st.session_state.current_user[
+                        "display_name"
+                    ],
+                }
+            )
+
+            # Add environment variables starting with LOGGER_
+            log_data.update(
+                {
+                    k[7:].lower(): v
+                    for k, v in os.environ.items()
+                    if k.startswith("LOGGER_")
+                }
+            )
 
         if record.exc_info is not None:
-            always_fields["exc_info"] = self.formatException(record.exc_info)
+            log_data["exc_info"] = self.formatException(record.exc_info)
 
         if record.stack_info is not None:
-            always_fields["stack_info"] = self.formatStack(record.stack_info)
+            log_data["stack_info"] = self.formatStack(record.stack_info)
 
-        message = {
+        # Include formatted keys from fmt_keys
+        formatted_keys = {
             key: (
                 msg_val
-                if (msg_val := always_fields.pop(val, None)) is not None
+                if (msg_val := log_data.pop(val, None)) is not None
                 else getattr(record, val)
             )
             for key, val in self.fmt_keys.items()
         }
-        message.update(always_fields)
-        # here the extra args are added
-        for key, val in record.__dict__.items():
-            if key not in LOG_RECORD_BUILTIN_ATTRS:
-                message[key] = val
+        log_data.update(formatted_keys)
 
-        return message
+        # Add extra attributes from the log record
+        extra_attributes = {
+            key: val
+            for key, val in record.__dict__.items()
+            if key not in LOG_RECORD_BUILTIN_ATTRS
+        }
+        log_data.update(extra_attributes)
+
+        return log_data

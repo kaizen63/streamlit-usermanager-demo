@@ -1,22 +1,21 @@
 from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Literal, Optional, TypeAlias
-import os
 
 from pydantic import (
     ValidationInfo,
     field_validator,
 )
-
-from sqlalchemy import UniqueConstraint, CheckConstraint, Index
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKeyConstraint,
+    Index,
+    UniqueConstraint,
+)
 from sqlmodel import Field, SQLModel
 from sqlmodel._compat import SQLModelConfig
 
-schema = os.getenv("DB_SCHEMA")
-if schema:
-    schema_prefix = schema + "."
-else:
-    schema_prefix = ""
+from .db_schema import schema, schema_prefix
 
 
 class ParticipantRelationType(StrEnum):
@@ -75,16 +74,16 @@ class ParticipantRelationBase(SQLModel):
 class ParticipantRelationModel(ParticipantRelationBase, table=True):
     __tablename__ = "participant_relations"
     __table_args__ = (
-        # ForeignKeyConstraint(
-        #    ["pati1_id"],
-        #    [f"{schema_prefix}participants.id"],
-        #    ondelete="CASCADE",
-        # ),
-        # ForeignKeyConstraint(
-        #    ["pati2_id"],
-        #    [f"{schema_prefix}participants.id"],
-        #    ondelete="CASCADE",
-        # ),
+        ForeignKeyConstraint(
+            ["pati1_id"],
+            [f"{schema_prefix}participants.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["pati2_id"],
+            [f"{schema_prefix}participants.id"],
+            ondelete="CASCADE",
+        ),
         UniqueConstraint(
             "pati1_id",
             "pati2_id",
@@ -96,14 +95,18 @@ class ParticipantRelationModel(ParticipantRelationBase, table=True):
             name="participants_chk1",
         ),
         Index("participant_relations_fk2", "pati2_id"),
-        {"schema": schema, "extend_existing": True},
+        (
+            {"schema": schema, "extend_existing": True}
+            if schema
+            else {"extend_existing": True}
+        ),
     )
 
     id: int | None = Field(default=None, primary_key=True)
     pati1_id: int = Field(..., foreign_key=f"{schema_prefix}participants.id")
     pati2_id: int = Field(..., foreign_key=f"{schema_prefix}participants.id")
     # redefine as str to make the model work
-    relation_type: str = Field(..., max_length=16)
+    relation_type: str = Field(..., max_length=16)  # type: ignore
 
 
 class ParticipantRelationCreate(ParticipantRelationBase):

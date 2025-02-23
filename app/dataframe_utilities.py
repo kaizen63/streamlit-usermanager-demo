@@ -1,12 +1,14 @@
 """Utilities for dataframes"""
 
 import logging
+import re
+from typing import Literal, TypeAlias
+
 import pandas as pd
 import streamlit as st
-from who_called_me import who_called_me2
-from typing import Literal, TypeAlias
-import re
+from common import safe_index
 from config import settings
+from who_called_me import who_called_me2
 
 LabelVisibilityType: TypeAlias = Literal["visible", "hidden", "collapsed"]
 
@@ -35,6 +37,7 @@ def render_filter_menu(
     label: str = "Filter By",
     label_visibility: LabelVisibilityType = "visible",
     key_prefix: str | None = None,
+    select_column: str | None = None,
 ) -> pd.DataFrame:
     """Renders the filter menu and values menu. Returns the filtered dataframe if filtering is enabled.
     key_prefix must be a unique key for the filter. If not provided we create one.
@@ -51,11 +54,14 @@ def render_filter_menu(
         key2 = f"{key_prefix}_2"
 
     columns = sorted([c for c in df.columns if c not in exclude_columns])
+    index = safe_index(columns, select_column, 0)
+
     with filter_menu[0]:
         filter_field = st.selectbox(
             label,
             options=columns,
             key=key1,
+            index=index,
             label_visibility=label_visibility,
         )
     st.empty()
@@ -71,6 +77,13 @@ def render_filter_menu(
                 drop=True
             )
     return df
+
+
+def key_function(col: pd.Series) -> pd.Series:
+    """Returns the sorting key function based on column type."""
+    return (
+        col if pd.api.types.is_datetime64_any_dtype(col) else col.str.lower()
+    )
 
 
 def render_sort_menu(
@@ -99,8 +112,8 @@ def render_sort_menu(
     with sort_menu[0]:
         sort = st.radio(
             "Sort",
-            options=["Yes", "No"],
-            horizontal=1,
+            options=("Yes", "No"),
+            horizontal=True,
             index=1,
             key=key1,
         )
@@ -114,16 +127,12 @@ def render_sort_menu(
                 horizontal=True,
                 key=key3,
             )
-        if pd.api.types.is_datetime64_any_dtype(df[sort_column]):
-            key_func = lambda col: col
-        else:
-            key_func = lambda col: col.str.lower()
 
         df = df.sort_values(
             by=sort_column,
             ascending=sort_direction == "⬆️",
             ignore_index=True,
-            key=key_func,
+            key=key_function,
             na_position="last",
         )
     return df

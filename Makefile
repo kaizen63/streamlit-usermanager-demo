@@ -9,7 +9,8 @@ PYTHON_DIR = ./app
 fmt:
 	@echo "Running black formatter..."
 	uv run black --config pyproject.toml ${PYTHON_DIR}
-
+	@echo "Running isort"
+	uv run isort ${PYTHON_DIR}
 # Lint the Python files with flake8
 lint:
 	@echo "Running flake8 linter..."

@@ -1,9 +1,10 @@
-from .participant import ParticipantRepository, ParticipantNotFoundError
-from .participant_relation import (
-    ParticipantRelationRepository,
-    ParticipantRelationNotFoundError,
-)
 from sqlalchemy.exc import IntegrityError
+
+from .participant import ParticipantNotFoundError, ParticipantRepository
+from .participant_relation import (
+    ParticipantRelationNotFoundError,
+    ParticipantRelationRepository,
+)
 
 __all__ = [
     "ParticipantRepository",

@@ -1,22 +1,19 @@
 """Render homepage"""
 
 import logging
-from config import settings
-import pandas as pd
-import streamlit as st
-
 from enum import StrEnum
 
+import pandas as pd
+import streamlit as st
+from config import settings
 from dataframe_utilities import (
     calculate_height,
+    paginate_df,
     render_filter_menu,
     render_sort_menu,
-    paginate_df,
 )
-
 from db import get_db
 from participants import Participant, ParticipantRepository
-
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -99,7 +96,7 @@ def render_participants_table(title: str):
         return
     count = len(df)
     st.write(f"Participants: [{count}]")
-    with st.container(border=1):
+    with st.container(border=True):
         df = render_filter_menu(
             df,
             exclude_columns=[

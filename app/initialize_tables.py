@@ -1,10 +1,15 @@
-from participants import ParticipantType, ParticipantRelationType
-from participants import ParticipantCreate, ParticipantRepository
-from sqlalchemy import Engine, text, Connection
-from sqlmodel import Session
 import logging
-from config import settings
 import os
+
+from config import settings
+from participants import (
+    ParticipantCreate,
+    ParticipantRelationType,
+    ParticipantRepository,
+    ParticipantType,
+)
+from sqlalchemy import Connection, Engine, text
+from sqlmodel import Session
 
 schema = os.getenv("DB_SCHEMA")
 if schema:

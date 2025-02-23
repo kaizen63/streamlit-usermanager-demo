@@ -86,11 +86,11 @@ When moving a person from one team to another he will automatically get the righ
 
 Following query parameters are supported in the URL:
 
-| Parameters | Purpose                                                                                                                         |
-|------------|---------------------------------------------------------------------------------------------------------------------------------|
-| menu       | Selected item in the main menu                                                                                                  |
-| debug      | If set to 1, shows an additional Debug menu where you can see the session state variables                                       |
-| loglevel  | Set to DEBUG to enable the loglevel DEBUG. Usefull if you want to debug something in prod, where the default loglevel is INFO  |
+| Parameters | Purpose                                                                                                                          |
+|------------|----------------------------------------------------------------------------------------------------------------------------------|
+| menu       | Selected item in the main menu                                                                                                   |
+| debug      | If set to 1, shows an additional Debug menu where you can see the session state variables                                        |
+| loglevel   | Set to DEBUG to enable the loglevel DEBUG. Usefull if you want to debug something in prod, where the default loglevel is INFO    |
 
 
 ## RBAC Implementation
@@ -152,7 +152,7 @@ To better illustrate the relationship the view [participants_relations](images/p
 | DB_USERNAME                             | The database username                                                                                |                              |                                                    |
 | DB_PASSWORD                             | The password of the db user                                                                          |                              |                                                    |
 | DB_SCHEMA                               | The schema where we find our tables. Empty for sqlite                                                |                              |                                                    |
-| LDAP_SERVER                             | The ldap server we use for authentication                                                            |                              | ldap://ldap.forumsys.com                                                   |
+| LDAP_SERVER                             | The ldap server we use for authentication                                                            |                              | ldap://ldap.forumsys.com                           |
 | STREAMLIT_LOGGER_LEVEL                  | The loglevel for streamlit                                                                           | INFO                         | WARNING in prod                                    |
 | STREAMLIT_LOGGER_MESSAGE_FORMAT         | The message format used by streamlit                                                                 |                              | %(asctime)s %(levelname)s [%(name)s] [%(process)d] - %(message)s |
 | STREAMLIT_SERVER_FOLDER_WATCH_BLACKLIST | Folders to ignore when watching for changed files                                                    |                              | ["/app/logs", "./logs"]                            |

@@ -4,21 +4,22 @@ Repositories for participants and participant relations
 
 import logging
 
-from sqlmodel import Session, select, or_
-from sqlalchemy.exc import NoResultFound, IntegrityError
-from sqlalchemy.orm import aliased
 from sqlalchemy import Select
-
-# from sqlalchemy.dialects import sqlite
+from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.orm import aliased
+from sqlmodel import Session, or_, select
 
 from ..models import (
     ParticipantModel,
-    ParticipantRelationModel,
-    RelatedParticipant,
     ParticipantRelation,
     ParticipantRelationCreate,
+    ParticipantRelationModel,
+    RelatedParticipant,
 )
 from .base_class import RepositoryBase
+
+# from sqlalchemy.dialects import sqlite
+
 
 logger = logging.getLogger("participants")
 

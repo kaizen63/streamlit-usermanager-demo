@@ -1,15 +1,11 @@
 """Defines the view participant_relations_v"""
 
 from datetime import datetime
-import os
-from sqlalchemy import text, event
+
+from sqlalchemy import event, text
 from sqlmodel import SQLModel
 
-schema = os.getenv("DB_SCHEMA")
-if schema:
-    schema_prefix = schema + "."
-else:
-    schema_prefix = ""
+from .db_schema import schema_prefix
 
 
 class ParticipantRelationsView(SQLModel, table=False):

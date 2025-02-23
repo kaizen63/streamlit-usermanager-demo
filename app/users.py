@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Optional, Union, Callable, Literal, TypeAlias
+from typing import Any, Callable, Literal, Optional, TypeAlias, Union
 
 import streamlit as st
 from common import (
@@ -11,14 +11,16 @@ from common import (
     compare_lists,
     get_policy_enforcer,
     is_administrator,
-)
-from participant_utilities import (
-    get_participant_by_display_name,
-    get_users,
-    get_org_units,
-    get_participant_ids,
+    safe_index,
 )
 from config import settings
+from db import get_db
+from participant_utilities import (
+    get_org_units,
+    get_participant_by_display_name,
+    get_participant_ids,
+    get_users,
+)
 from participants import (
     Participant,
     ParticipantCreate,
@@ -28,7 +30,6 @@ from participants import (
     ParticipantType,
     ParticipantUpdate,
 )
-from db import get_db
 from validate_email import validate_email
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -789,14 +790,8 @@ def render_user_selectbox() -> Optional[Participant]:
     )
     key = "users_selectbox"
     selected_key = key + "_selected"
-    if (
-        selected_key in st.session_state
-        and st.session_state[selected_key]
-        and st.session_state[selected_key] in usernames
-    ):
-        index = usernames.index(st.session_state[selected_key])
-    else:
-        index = 0
+
+    index = safe_index(usernames, st.session_state.get(selected_key), 0)
 
     selected = st.selectbox(
         label="Select a user",

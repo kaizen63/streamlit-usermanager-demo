@@ -4,32 +4,30 @@ Repositories for participants
 
 import logging
 from datetime import datetime, timezone
-from typing import Literal, Optional, cast, TypeAlias
+from typing import Literal, Optional, TypeAlias, cast
 
 from pydantic import ValidationError
 from sqlalchemy import Select
-from sqlmodel import Session, select, or_, delete, update
+from sqlmodel import Session, delete, or_, select, update
 
 from ..models import (
-    ParticipantModel,
-    ParticipantRelationModel,
     Participant,
     ParticipantCreate,
+    ParticipantModel,
+    ParticipantRelation,
+    ParticipantRelationCreate,
+    ParticipantRelationModel,
+    ParticipantRelationType,
     ParticipantState,
     ParticipantStateLiteral,
     ParticipantType,
     ParticipantUpdate,
     RelatedParticipant,
-    ParticipantRelation,
-    ParticipantRelationCreate,
-    ParticipantRelationType,
 )
-
-
 from .base_class import RepositoryBase
 from .participant_relation import (
-    ParticipantRelationRepository,
     ParticipantRelationNotFoundError,
+    ParticipantRelationRepository,
 )
 
 logger = logging.getLogger("participants")

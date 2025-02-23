@@ -1,11 +1,12 @@
-from typing import Any
-
-from sqlmodel import create_engine, SQLModel, Session
+import functools
 import logging
 import os
 import urllib
-from sqlalchemy import inspect, Engine
-import functools
+from typing import Any
+
+from sqlalchemy import inspect
+from sqlalchemy.engine import Engine
+from sqlmodel import Session, SQLModel, create_engine
 
 logger = logging.getLogger(__name__)
 

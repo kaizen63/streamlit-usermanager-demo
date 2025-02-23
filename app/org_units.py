@@ -5,17 +5,15 @@ import time
 from typing import Any, Optional, Union
 
 import streamlit as st
-from common import (
-    get_policy_enforcer,
-)
+from common import get_policy_enforcer, safe_index
+from config import settings
+from db import get_db
 from participant_utilities import (
+    get_org_units,
     get_participant_by_display_name,
     get_roles,
-    get_org_units,
     get_users,
 )
-
-from config import settings
 from participants import (
     Participant,
     ParticipantCreate,
@@ -26,7 +24,6 @@ from participants import (
     ParticipantUpdate,
     is_valid_name,
 )
-from db import get_db
 from users import add_roles, delete_roles, process_participant_changes
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -177,14 +174,9 @@ def render_org_units_selectbox() -> Optional[Participant]:
     org_units = [o.display_name for o in all_org_units]
     key = "org_units_selectbox"
     selected_key = key + "_selected"
-    if (
-        selected_key in st.session_state
-        and st.session_state[selected_key]
-        and st.session_state[selected_key] in org_units
-    ):
-        index = org_units.index(st.session_state[selected_key])
-    else:
-        index = 0
+
+    index = safe_index(org_units, st.session_state.get(selected_key), 0)
+
     selected = st.selectbox(
         label="Select an Organizational Unit",
         options=org_units,

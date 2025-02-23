@@ -7,11 +7,11 @@ import streamlit as st
 from about import render_about
 from common import check_access
 from config import settings
+from debug_page import render_debug_page
 from org_units import render_org_units
 from roles import render_roles
 from streamlit_option_menu import option_menu
 from users import render_users
-from debug_page import render_debug_page
 
 # from streamlit_extras.bottom_container import bottom
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -63,7 +63,7 @@ def get_home_label() -> str:
 
 
 def generate_menu_items(
-    permissions: dict[str, bool]
+    permissions: dict[str, bool],
 ) -> tuple[list[str], list[str]]:
     """Generate menu options and corresponding icons based on permissions."""
 

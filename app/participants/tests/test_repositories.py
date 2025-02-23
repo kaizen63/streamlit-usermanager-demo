@@ -1,13 +1,17 @@
-from typing import Literal, Optional, cast, Generator
+import os
+from typing import Generator, Literal, Optional, cast
 
 # import os
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.exc import PendingRollbackError
 from sqlmodel import Session, delete
-import os
 
 from app.participants import (
+    IntegrityError,
     Participant,
     ParticipantCreate,
+    ParticipantRelation,
     ParticipantRelationCreate,
     ParticipantRelationRepository,
     ParticipantRelationType,
@@ -15,14 +19,10 @@ from app.participants import (
     ParticipantState,
     ParticipantType,
     ParticipantUpdate,
-    ParticipantRelation,
-    IntegrityError,
 )
-from sqlalchemy import Engine
-from sqlalchemy.exc import PendingRollbackError
-from ..models import ParticipantModel, ParticipantRelationModel
-from .db import get_url, create_db_engine, is_sqlite, create_db_and_tables
 
+from ..models import ParticipantModel, ParticipantRelationModel
+from .db import create_db_and_tables, create_db_engine, get_url, is_sqlite
 
 db_engine: str = os.getenv("DB_ENGINE")
 db_url = get_url(db_engine)

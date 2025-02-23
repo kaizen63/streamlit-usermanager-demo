@@ -6,7 +6,7 @@ from http import HTTPStatus
 from typing import Iterable, Optional
 
 import streamlit as st
-from common import check_access, CurrentUser
+from common import CurrentUser, check_access
 from config import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
