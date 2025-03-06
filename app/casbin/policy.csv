@@ -22,6 +22,10 @@ g, ORG_UNIT_WRITE, ORG_UNIT_READ
 g, USER_ADMINISTRATOR, USER_WRITE
 g, USER_ADMINISTRATOR, ROLE_WRITE
 g, USER_ADMINISTRATOR, ORG_UNIT_WRITE
+p, USER_ADMINISTRATOR, users, create
+p, USER_ADMINISTRATOR, roles, create
+p, USER_ADMINISTRATOR, org_units, create
+
 
 
 # Just in case someone disables us in the database
