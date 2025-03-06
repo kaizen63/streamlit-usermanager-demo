@@ -18,7 +18,7 @@ def test_participant_model() -> None:
         {
             "id": 1,
             "name": "test",
-            "display_name": "Display, Name",
+            "display_name": " Display, Name ",
             "email": "efpyi@example.com",
             "participant_type": ParticipantType.HUMAN,
             "state": ParticipantState.ACTIVE,

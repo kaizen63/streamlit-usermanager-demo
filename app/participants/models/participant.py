@@ -10,7 +10,6 @@ from pydantic import (
 )
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
-from sqlmodel._compat import SQLModelConfig
 from validate_email import validate_email
 
 from .db_schema import schema
@@ -67,9 +66,11 @@ def is_valid_name(name: str) -> bool:
 class ParticipantBase(SQLModel):
     """Participant Base Model is used to read data from the database"""
 
-    model_config = SQLModelConfig(
-        extra="forbid", str_strip_whitespace=True, from_attributes=True
-    )
+    model_config = {
+        "extra": "forbid",
+        "str_strip_whitespace": True,
+        "from_attributes": True,
+    }
 
     name: str = Field(..., max_length=30)
     display_name: str = Field(..., max_length=60)
@@ -253,9 +254,11 @@ class ParticipantCreate(ParticipantBase):
 
 
 class ParticipantUpdate(SQLModel):
-    model_config = SQLModelConfig(
-        extra="forbid", str_strip_whitespace=True, from_attributes=True
-    )
+    model_config = {
+        "extra": "forbid",
+        "str_strip_whitespace": True,
+        "from_attributes": True,
+    }
     """Class to update a participant. All changed fields will be updated"""
     name: Optional[str] = Field(default=None)
     display_name: Optional[str] = Field(default=None, max_length=60)

@@ -13,7 +13,6 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlmodel import Field, SQLModel
-from sqlmodel._compat import SQLModelConfig
 
 from .db_schema import schema, schema_prefix
 
@@ -38,9 +37,11 @@ ParticipantRelationTypeLiteral: TypeAlias = Literal[
 class ParticipantRelationBase(SQLModel):
     """The relationship between participants"""
 
-    model_config = SQLModelConfig(
-        extra="forbid", str_strip_whitespace=True, from_attributes=True
-    )
+    model_config = {
+        "extra": "forbid",
+        "str_strip_whitespace": True,
+        "from_attributes": True,
+    }
 
     pati1_id: int = Field(...)
     pati2_id: int = Field(...)

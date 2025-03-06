@@ -15,7 +15,7 @@ def test_participant_relation_model() -> None:
             "pati1_id": 20,
             "pati2_id": 30,
             "relation_type": ParticipantRelationType.MEMBER_OF,
-            "created_by": "admin",
+            "created_by": "admin ",
         }
     )
     assert r.id == 1
