@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Callable, Literal, Optional, TypeAlias, Union
+from typing import Any, Callable, Literal, Optional, TypeAlias
 
 import streamlit as st
 from common import (
@@ -690,39 +690,67 @@ def save_new_user(
 def check_new_user_exists(
     pati_repo: ParticipantRepository, username: str, display_name: str
 ) -> bool:
-    """Checks if the new user exists, either with its username or display_name and active or terminated.
-    Returns True if the username already exists, False otherwise."""
-    exists: Union[bool | str] = pati_repo.exists(
-        "name", username, ParticipantType.HUMAN
-    )
-    if exists:
-        if exists == ParticipantState.TERMINATED:
-            st.error(
-                f"Username: {username!a} already exists but is not active"
-            )
-        else:
-            st.error(f"Username: {username!a} already exists")
+    """Checks if the new user exists by username or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise."""
 
-        return True
+    def user_exists(field: str, value: str) -> bool:
+        exists = pati_repo.exists(field, value, ParticipantType.HUMAN)
+        if exists:
+            status_msg = (
+                "but is not active"
+                if exists == ParticipantState.TERMINATED
+                else ""
+            )
+            st.error(
+                f"{field.replace('_', ' ').title()}: {value!a} already exists {status_msg}".strip()
+            )
+        return bool(exists)
 
-    exists = pati_repo.exists(
-        "display_name", display_name, ParticipantType.HUMAN
+    return user_exists("name", username) or user_exists(
+        "display_name", display_name
     )
-    if exists:
-        if exists == ParticipantState.TERMINATED:
-            st.error(
-                f"User with the same display name: {display_name!a} already exists but is not active"
-            )
-        else:
-            st.error(
-                f"User with the same display name: {display_name!a} already exists"
-            )
-        return True
-    return False
 
 
 def render_create_user_form(title: str) -> None:
     """Renders the create user form and handles the submit button"""
+
+    # noinspection PyShadowingNames
+    def process_form_submission(
+        username: str, display_name: str, email: str, description: str
+    ) -> None:
+        if not validate_email(email):
+            st.error(f"Invalid Email: {email!a}")
+            return
+
+        username = username.upper()
+        with ParticipantRepository(get_db()) as pati_repo:
+            if check_new_user_exists(pati_repo, username, display_name):
+                return
+
+            try:
+                save_new_user(
+                    pati_repo=pati_repo,
+                    username=username,
+                    display_name=display_name,
+                    description=description,
+                    email=email,
+                )
+            except Exception as e:
+                logger.exception(f"User creation failed: {e}")
+                st.error("Oops that went wrong")
+                pati_repo.rollback()
+            else:
+                pati_repo.commit()
+                st.success(f"User {username} created")
+                finalize_user_creation(display_name)
+
+    # noinspection PyShadowingNames
+    def finalize_user_creation(display_name: str):
+        time.sleep(1)
+        get_users.clear()
+        st.session_state["users_selectbox_selected"] = display_name
+        st.rerun()
+
     with st.form(key="create_user_form", clear_on_submit=False):
         st.write(title)
         username = st.text_input(
@@ -733,7 +761,6 @@ def render_create_user_form(title: str) -> None:
         display_name = st.text_input(
             "Display Name", placeholder="Doe, John", help="Last, First"
         )
-
         email = st.text_input("Email", placeholder="john.doe@nielseniq.com")
         description = st.text_input(label="Description (Optional)", value="")
 
@@ -741,39 +768,9 @@ def render_create_user_form(title: str) -> None:
             if not display_name or not username or not email:
                 st.error("Please fill in all fields")
             else:
-                # Now check if the user already exists. Can also be a terminated one
-                if not validate_email(email):
-                    st.error(f"Invalid Email: {email!a}")
-                    return
-
-                username = username.upper()
-                with ParticipantRepository(get_db()) as pati_repo:
-                    if check_new_user_exists(
-                        pati_repo, username, display_name
-                    ):
-                        return
-                    try:
-                        save_new_user(
-                            pati_repo=pati_repo,
-                            username=username,
-                            display_name=display_name,
-                            description=description,
-                            email=email,
-                        )
-                    except Exception as e:
-                        logger.exception(f"User creation failed: {e}")
-                        st.error("Oops that went wrong")
-                        pati_repo.rollback()
-                    else:
-                        pati_repo.commit()
-                        st.success(f"User {username} created")
-                        time.sleep(1)
-
-                        get_users.clear()
-                        st.session_state["users_selectbox_selected"] = (
-                            display_name
-                        )
-                        st.rerun()  # to render the user selectbox new.
+                process_form_submission(
+                    username, display_name, email, description
+                )
 
 
 def render_user_selectbox() -> Optional[Participant]:
@@ -820,6 +817,60 @@ def render_user_selectbox() -> Optional[Participant]:
 
 def render_update_user_form(selected_user: Participant) -> None:
     """Renders the roles, groups and proxies and handles the save button"""
+
+    def get_user_changes() -> dict[str, str | None]:
+        return {
+            "description": (
+                description
+                if selected_user.description != description
+                else None
+            ),
+            "display_name": (
+                display_name
+                if selected_user.display_name != display_name
+                else None
+            ),
+            "state": (
+                state_toggle
+                if state_toggle != str(selected_user.state)
+                else None
+            ),
+            "email": email if selected_user.email != email else None,
+        }
+
+    # noinspection PyShadowingNames
+    def process_form_submission(pati_repo: ParticipantRepository):
+        user_changes = {
+            k: v for k, v in get_user_changes().items() if v is not None
+        }
+        try:
+            updated: bool = save_user_changes(
+                pati_repo,
+                selected_user,
+                user_changes,
+                selected_roles,
+                selected_org_units,
+                selected_proxy_of,
+                selected_proxies,
+            )
+        except Exception as e:
+            logger.exception(e)
+            pati_repo.rollback()
+        else:
+            handle_update_result(updated, pati_repo)
+
+    # noinspection PyShadowingNames
+    def handle_update_result(updated: bool, pati_repo: ParticipantRepository):
+        if updated:
+            pati_repo.commit()
+            get_users.clear()
+            st.success(f"User {selected_user.display_name!a} updated")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.info("No changes to save")
+            time.sleep(1)
+
     enforcer = get_policy_enforcer()
     disabled = not enforcer.enforce(
         st.session_state.username, "users", "write"
@@ -855,16 +906,16 @@ def render_update_user_form(selected_user: Participant) -> None:
     )
 
     with st.form(key="update_user_form", clear_on_submit=False):
-        scol1, scol2, scol3 = st.columns(3)
-        with scol1:
+        columns = st.columns(3)
+        with columns[0]:
             selected_roles = render_roles(
                 "### Roles", selected_user, disabled=disabled
             )
-        with scol2:
+        with columns[1]:
             selected_org_units = render_org_units(
                 "### Member of", selected_user, disabled=disabled
             )
-        with scol3:
+        with columns[2]:
             selected_proxy_of = render_proxy_of(
                 "### This user is Proxy of", selected_user, disabled=disabled
             )
@@ -878,53 +929,7 @@ def render_update_user_form(selected_user: Participant) -> None:
 
         if st.form_submit_button("Save", disabled=disabled):
             with ParticipantRepository(get_db()) as pati_repo:
-                user_changes = {
-                    "description": (
-                        description
-                        if selected_user.description != description
-                        else None
-                    ),
-                    "display_name": (
-                        display_name
-                        if selected_user.display_name != display_name
-                        else None
-                    ),
-                    "state": (
-                        state_toggle
-                        if state_toggle != str(selected_user.state)
-                        else None
-                    ),
-                    "email": email if selected_user.email != email else None,
-                }
-                user_changes = {
-                    k: v for k, v in user_changes.items() if v is not None
-                }
-
-                try:
-                    updated = save_user_changes(
-                        pati_repo,
-                        selected_user,
-                        user_changes,
-                        selected_roles,
-                        selected_org_units,
-                        selected_proxy_of,
-                        selected_proxies,
-                    )
-                except Exception as e:
-                    logger.exception(e)
-                    pati_repo.rollback()
-                else:
-                    if updated:
-                        pati_repo.commit()
-                        get_users.clear()
-                        st.success(
-                            f"User {selected_user.display_name!a} updated"
-                        )
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.info("No changes to save")
-                        time.sleep(1)
+                process_form_submission(pati_repo)
 
 
 def render_users() -> None:
@@ -944,75 +949,87 @@ def render_users() -> None:
 
 def render_self_registration_form(title: str) -> None:
     """Self-service for managers to create themselves as users"""
+
+    # noinspection PyShadowingNames
+    def process_registration(
+        username: str,
+        display_name: str,
+        email: str,
+        job_title: str,
+        login_user: dict[str, str],
+    ) -> None:
+        if not validate_email(email):
+            st.error(f"Invalid Email: {email!a}")
+            return
+
+        username = username.upper()
+        if username != login_user["username"] and not is_administrator(
+            login_user["username"]
+        ):
+            st.error("You cannot create an account for someone else")
+            st.stop()
+
+        create = ParticipantCreate(
+            name=username,
+            display_name=display_name,
+            email=email,
+            participant_type=ParticipantType.HUMAN,
+            created_by=username,
+            description=job_title,
+        )
+
+        with ParticipantRepository(get_db()) as pati_repo:
+            try:
+                new_pati = pati_repo.create(create)
+                add_roles(pati_repo, new_pati, [AppRoles.USER_READ])
+            except Exception as e:
+                logger.exception(e)
+                st.exception(e)
+                raise
+            else:
+                finalize_registration(pati_repo, username)
+
+    # noinspection PyShadowingNames
+    def finalize_registration(
+        pati_repo: ParticipantRepository, username: str
+    ) -> None:
+        enforcer = get_policy_enforcer()
+        enforcer.add_role_for_user(username, AppRoles.USER_READ)
+        pati_repo.commit()
+        st.balloons()
+        st.success(
+            f"User {username} was successfully created. Please logout and login again!"
+        )
+        st.session_state["must_register"] = False
+
     st.write(title)
     st.write(":red[Please register yourself below]")
-    if not (login_user := st.session_state["login_user"]):
+
+    login_user = st.session_state.get("login_user")
+    if not login_user:
         st.error("Oops! Something went wrong")
         st.stop()
 
     with st.form(key="register_manager_form", clear_on_submit=False):
-        # We take the information from st.session_stat  because this user is not authorized in our system
-        username = st.text_input(
-            label="EnterpriseID",
-            value=login_user["username"],
-        )
+        username = st.text_input("EnterpriseID", value=login_user["username"])
         display_name = st.text_input(
-            label="Display Name", value=login_user["display_name"]
+            "Display Name", value=login_user["display_name"]
         )
-        email = st.text_input(label="Email", value=login_user["email"])
-        job_title = st.text_input(label="Job Title", value=login_user["title"])
+        email = st.text_input("Email", value=login_user["email"])
+        job_title = st.text_input("Job Title", value=login_user["title"])
 
         st.divider()
         conditions_accepted = st.checkbox(
-            label="Accept terms and conditions",
+            "Accept terms and conditions",
             value=False,
             key="users_user_terms_accepted_checkbox",
         )
+
         if st.form_submit_button("Register"):
             if conditions_accepted:
-                if not validate_email(email):
-                    st.error(f"Invalid Email: {email!a}")
-                username = username.upper()
-                if username != login_user.username and not is_administrator(
-                    login_user["username"]
-                ):
-                    st.error("You cannot create an account for someone else")
-                    st.stop()
-
-                create = ParticipantCreate(
-                    name=username,
-                    display_name=display_name,
-                    email=email,
-                    participant_type=ParticipantType.HUMAN,
-                    created_by=username,
-                    description=job_title,
+                process_registration(
+                    username, display_name, email, job_title, login_user
                 )
-
-                with ParticipantRepository(get_db()) as pati_repo:
-
-                    try:
-                        new_pati = pati_repo.create(create)
-                        add_roles(
-                            pati_repo,
-                            new_pati,
-                            [AppRoles.USER_READ],
-                        )
-
-                    except Exception as e:
-                        logger.exception(e)
-                        st.exception(e)
-                        raise
-                    else:
-                        enforcer = get_policy_enforcer()
-                        enforcer.add_role_for_user(
-                            username, AppRoles.USER_READ
-                        )
-                        pati_repo.commit()
-                        st.balloons()
-                        st.success(
-                            f"User {username} was successfully created. Please logout and login again!"
-                        )
-                    st.session_state["must_register"] = False
             else:
                 st.error("Please accept terms and conditions")
                 st.stop()
