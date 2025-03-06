@@ -8,7 +8,12 @@ from codetiming import Timer
 from config import settings
 from db import get_db
 from humanfriendly import format_timespan
-from participants import Participant, ParticipantRepository, ParticipantType
+from participants import (
+    Participant,
+    ParticipantRepository,
+    ParticipantType,
+    ParticipantState,
+)
 from who_called_me import who_called_me
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -195,3 +200,30 @@ def get_participant_ids(
         in identifiers
     ]
     return ids
+
+
+def check_pati_exists(
+    pati_repo: ParticipantRepository,
+    participant_type: ParticipantType,
+    name: str,
+    display_name: str,
+) -> bool:
+    """Checks if the participant exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise."""
+
+    def pati_exists(field: str, value: str) -> bool:
+        exists = pati_repo.exists(field, value, participant_type)
+        if exists:
+            status_msg = (
+                "but is not active"
+                if exists == ParticipantState.TERMINATED
+                else ""
+            )
+            st.error(
+                f"{field.replace('_', ' ').title()}: {value!a} already exists {status_msg}".strip()
+            )
+        return bool(exists)
+
+    return pati_exists("name", name) or pati_exists(
+        "display_name", display_name
+    )

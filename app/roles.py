@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Optional, Union
+from typing import Optional
 
 import streamlit as st
 from common import check_access, get_policy_enforcer, safe_index
@@ -11,6 +11,7 @@ from db import get_db
 from participant_utilities import (
     get_participant_by_name,
     get_roles,
+    check_pati_exists,
 )
 from participants import (
     Participant,
@@ -42,7 +43,6 @@ def render_roles_selectbox() -> Optional[Participant]:
     )
     key = "roles_selectbox"
     selected_key = f"{key}_selected"
-    index = safe_index(roles, selected_key)
     index = safe_index(roles, st.session_state.get(selected_key), 0)
 
     selected = st.selectbox(
@@ -97,8 +97,65 @@ def render_participants_granted_this_role(
     return selected
 
 
+def check_role_exists(
+    pati_repo: ParticipantRepository, name: str, display_name: str
+) -> bool:
+    """Checks if the role exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise."""
+    return check_pati_exists(
+        pati_repo, ParticipantType.ROLE, name, display_name
+    )
+
+
 def render_create_role_form(title: str) -> None:
     """Renders the create role form and handles the submit button"""
+
+    # noinspection PyShadowingNames
+    def process_form_submission(
+        role_name: str, display_name: str, description: str
+    ) -> None:
+        if not display_name or not role_name:
+            st.error("Please fill in all fields")
+        else:
+            if not is_valid_name(role_name.strip()):
+                st.error(
+                    "Invalid Name. Name must be at least 2 characters long, start with a letter,"
+                    + " can contain numbers, underscores and hyphens"
+                )
+                st.stop()
+
+            role_name = role_name.upper()
+            with ParticipantRepository(get_db()) as pati_repo:
+                if check_role_exists(pati_repo, role_name, display_name):
+                    return
+                try:
+                    create = ParticipantCreate(
+                        name=role_name,
+                        display_name=display_name,
+                        description=description,
+                        created_by=st.session_state.username,
+                        participant_type=ParticipantType.ROLE,
+                    )
+                    _ = pati_repo.create(create)
+
+                    # Now add him to the session state.
+                except Exception as e:
+                    logger.exception(f"Role creation failed: {e}")
+                    st.error("Oops that went wrong")
+                    pati_repo.rollback()
+                else:
+                    finalize_role_creation(pati_repo, role_name)
+
+    # noinspection PyShadowingNames
+    def finalize_role_creation(
+        pati_repo: ParticipantRepository, role_name: str
+    ) -> None:
+        pati_repo.commit()
+        get_roles.clear()
+        st.success(f"Role {role_name} created")
+        time.sleep(1)
+        st.rerun()  # to render the user selectbox new.
+
     with st.form(key="create_role_form", clear_on_submit=False):
         st.write(title)
         role_name = st.text_input(
@@ -112,68 +169,64 @@ def render_create_role_form(title: str) -> None:
         )
 
         if st.form_submit_button("Create"):
-            if not display_name or not role_name:
-                st.error("Please fill in all fields")
-            else:
-                if not is_valid_name(role_name.strip()):
-                    st.error(
-                        "Invalid Name. Name must be at least 2 characters long, start with a letter,"
-                        + " can contain numbers, underscores and hyphens"
-                    )
-                    st.stop()
-
-                role_name = role_name.upper()
-                with ParticipantRepository(get_db()) as pati_repo:
-                    exists: Union[bool | str] = pati_repo.exists(
-                        "name", role_name, ParticipantType.ROLE
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"Role {role_name!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(f"Role {role_name!a} already exists")
-
-                        return
-                    exists = pati_repo.exists(
-                        "display_name", display_name, ParticipantType.ROLE
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"Role with the same display name: {display_name!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(
-                                f"Role with the same display name: {display_name!a} already exists"
-                            )
-                        return
-                    try:
-                        create = ParticipantCreate(
-                            name=role_name,
-                            display_name=display_name,
-                            description=description,
-                            created_by=st.session_state.username,
-                            participant_type=ParticipantType.ROLE,
-                        )
-                        _ = pati_repo.create(create)
-
-                        # Now add him to the session state.
-                    except Exception as e:
-                        logger.exception(f"Role creation failed: {e}")
-                        st.error("Oops that went wrong")
-                        pati_repo.rollback()
-                    else:
-                        pati_repo.commit()
-                        get_roles.clear()
-                        st.success(f"Role {role_name} created")
-                        time.sleep(1)
-                        st.rerun()  # to render the user selectbox new.
+            process_form_submission(role_name, display_name, description)
 
 
 def render_update_role_form(selected_role: Participant) -> None:
     """Renders the role update dialog"""
+
+    def get_role_changes() -> dict[str, str | None]:
+        return {
+            "display_name": (
+                display_name
+                if selected_role.display_name != display_name
+                else None
+            ),
+            "description": (
+                description
+                if selected_role.description != description
+                else None
+            ),
+            "state": (
+                state_toggle
+                if state_toggle != str(selected_role.state)
+                else None
+            ),
+        }
+
+    def process_form_submission() -> None:
+        if len(display_name) == 0:
+            st.error("Display name cannot be empty")
+            st.stop()
+        role_changes = {
+            k: v for k, v in get_role_changes().items() if v is not None
+        }
+        if role_changes:
+            role_changes["updated_by"] = st.session_state.username
+            update = ParticipantUpdate.model_validate(role_changes)
+
+            with ParticipantRepository(get_db()) as pati_repo:
+                try:
+                    pati_repo.update(selected_role.id, update)
+                except Exception as e:
+                    pati_repo.rollback()
+                    logger.exception(e)
+                    st.exception(e)
+                    raise
+                else:
+                    finalize_update(pati_repo, selected_role.name)
+        else:
+            st.info("No changes to save")
+
+    def finalize_update(
+        pati_repo: ParticipantRepository, role_name: str
+    ) -> None:
+        pati_repo.commit()
+        get_roles.clear()
+        st.success(f"Role {role_name!a} saved")
+        time.sleep(1)
+        st.rerun()
+
     enforcer = get_policy_enforcer()
     disabled = not enforcer.enforce(
         st.session_state.username, "roles", "write"
@@ -201,48 +254,7 @@ def render_update_role_form(selected_role: Participant) -> None:
             disabled=disabled,
         )
         if st.form_submit_button("Save", disabled=disabled):
-            if len(display_name) == 0:
-                st.error("Display name cannot be empty")
-                st.stop()
-            db_changes = {
-                "display_name": (
-                    display_name
-                    if selected_role.display_name != display_name
-                    else None
-                ),
-                "description": (
-                    description
-                    if selected_role.description != description
-                    else None
-                ),
-                "state": (
-                    state_toggle
-                    if state_toggle != str(selected_role.state)
-                    else None
-                ),
-            }
-            db_changes = {k: v for k, v in db_changes.items() if v is not None}
-            if db_changes:
-                db_changes["updated_by"] = st.session_state.username
-                update = ParticipantUpdate.model_validate(db_changes)
-
-                with ParticipantRepository(get_db()) as pati_repo:
-                    try:
-                        pati_repo.update(selected_role.id, update)
-                    except Exception as e:
-                        pati_repo.rollback()
-                        logger.exception(e)
-                        st.exception(e)
-                        raise
-                    else:
-                        pati_repo.commit()
-                        get_roles.clear()
-                        get_participant_by_name.clear()
-                        st.success(f"Role {selected_role.name} saved")
-                        time.sleep(1)
-                        st.rerun()
-            else:
-                st.info("No changes to save")
+            process_form_submission()
 
 
 def render_roles() -> None:

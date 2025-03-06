@@ -20,6 +20,7 @@ from participant_utilities import (
     get_participant_by_display_name,
     get_participant_ids,
     get_users,
+    check_pati_exists,
 )
 from participants import (
     Participant,
@@ -687,27 +688,13 @@ def save_new_user(
             return
 
 
-def check_new_user_exists(
-    pati_repo: ParticipantRepository, username: str, display_name: str
+def check_user_exists(
+    pati_repo: ParticipantRepository, name: str, display_name: str
 ) -> bool:
-    """Checks if the new user exists by username or display name, whether active or terminated.
+    """Checks if the user exists by name or display name, whether active or terminated.
     Returns True if the user already exists, False otherwise."""
-
-    def user_exists(field: str, value: str) -> bool:
-        exists = pati_repo.exists(field, value, ParticipantType.HUMAN)
-        if exists:
-            status_msg = (
-                "but is not active"
-                if exists == ParticipantState.TERMINATED
-                else ""
-            )
-            st.error(
-                f"{field.replace('_', ' ').title()}: {value!a} already exists {status_msg}".strip()
-            )
-        return bool(exists)
-
-    return user_exists("name", username) or user_exists(
-        "display_name", display_name
+    return check_pati_exists(
+        pati_repo, ParticipantType.HUMAN, name, display_name
     )
 
 
@@ -724,7 +711,7 @@ def render_create_user_form(title: str) -> None:
 
         username = username.upper()
         with ParticipantRepository(get_db()) as pati_repo:
-            if check_new_user_exists(pati_repo, username, display_name):
+            if check_user_exists(pati_repo, username, display_name):
                 return
 
             try:
