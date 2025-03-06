@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import streamlit as st
 from common import get_policy_enforcer, safe_index
@@ -13,6 +13,7 @@ from participant_utilities import (
     get_participant_by_display_name,
     get_roles,
     get_users,
+    check_pati_exists,
 )
 from participants import (
     Participant,
@@ -199,9 +200,70 @@ def render_org_units_selectbox() -> Optional[Participant]:
     return None
 
 
+def check_org_unit_exists(
+    pati_repo: ParticipantRepository, name: str, display_name: str
+) -> bool:
+    """Checks if the user exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise."""
+    return check_pati_exists(
+        pati_repo, ParticipantType.ORG_UNIT, name, display_name
+    )
+
+
 def render_create_org_unit_form(title: str) -> None:
     """Renders the create user form and handles the submit button"""
     """Renders the create org unit form and handles the submit button"""
+
+    # noinspection PyShadowingNames
+    def process_form_submission(
+        org_unit_name: str, display_name: str, description: str
+    ) -> None:
+        if not display_name or not org_unit_name:
+            st.error("Please fill in all fields")
+            return
+        else:
+            if not is_valid_name(org_unit_name.strip()):
+                st.error(
+                    "Invalid Name. Name must be at least 2 characters long, start with a letter, "
+                    + "can contain numbers, underscores and hyphens"
+                )
+                st.stop()
+
+            org_unit_name = org_unit_name.upper()
+            with ParticipantRepository(get_db()) as pati_repo:
+                if check_org_unit_exists(
+                    pati_repo, org_unit_name, display_name
+                ):
+                    return
+                try:
+                    create = ParticipantCreate(
+                        name=org_unit_name,
+                        display_name=display_name,
+                        description=description,
+                        created_by=st.session_state.username,
+                        participant_type=ParticipantType.ORG_UNIT,
+                    )
+                    _ = pati_repo.create(create)
+
+                    # Now add him to the session state.
+                except Exception as e:
+                    logger.exception(f"Org Unit creation failed: {e}")
+                    st.error("Oops that went wrong")
+                    pati_repo.rollback()
+                else:
+                    finalize_org_unit_creation(pati_repo, org_unit_name)
+
+    # noinspection PyShadowingNames
+    def finalize_org_unit_creation(
+        pati_repo: ParticipantRepository, org_unit_name: str
+    ) -> None:
+        pati_repo.commit()
+        st.success(f"Organizational unit {org_unit_name} created")
+        time.sleep(1)
+        # Clear the cache, because get_participants is cached and must be reread
+        get_org_units.clear()
+        st.rerun()  # to render the user selectbox new.
+
     disabled = False
     with st.form(key="create_org_unit_form", clear_on_submit=False):
         st.write(title)
@@ -222,69 +284,7 @@ def render_create_org_unit_form(title: str) -> None:
         )
 
         if st.form_submit_button("Create", disabled=disabled):
-            if not display_name or not org_unit_name:
-                st.error("Please fill in all fields")
-            else:
-                if not is_valid_name(org_unit_name.strip()):
-                    st.error(
-                        "Invalid Name. Name must be at least 2 characters long, start with a letter, "
-                        + "can contain numbers, underscores and hyphens"
-                    )
-                    st.stop()
-
-                org_unit_name = org_unit_name.upper()
-                with ParticipantRepository(get_db()) as pati_repo:
-                    exists: Union[bool | str] = pati_repo.exists(
-                        "name", org_unit_name, ParticipantType.ORG_UNIT
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"Org Unit {org_unit_name!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(
-                                f"Org Unit {org_unit_name!a} already exists"
-                            )
-
-                        return
-                    exists = pati_repo.exists(
-                        "display_name", display_name, ParticipantType.ORG_UNIT
-                    )
-                    if exists:
-                        if exists == ParticipantState.TERMINATED:
-                            st.error(
-                                f"Org Unit with the same display name: {display_name!a} already exists but is not active"
-                            )
-                        else:
-                            st.error(
-                                f"Org Unit with the same display name: {display_name!a} already exists"
-                            )
-                        return
-                    try:
-                        create = ParticipantCreate(
-                            name=org_unit_name,
-                            display_name=display_name,
-                            description=description,
-                            created_by=st.session_state.username,
-                            participant_type=ParticipantType.ORG_UNIT,
-                        )
-                        _ = pati_repo.create(create)
-
-                        # Now add him to the session state.
-                    except Exception as e:
-                        logger.exception(f"Org Unit creation failed: {e}")
-                        st.error("Oops that went wrong")
-                        pati_repo.rollback()
-                    else:
-                        pati_repo.commit()
-                        st.success(
-                            f"Organizational unit {org_unit_name} created"
-                        )
-                        time.sleep(1)
-                        # Clear the cache, because get_participants is cached and must be reread
-                        get_org_units.clear()
-                        st.rerun()  # to render the user selectbox new.
+            process_form_submission(org_unit_name, display_name, description)
 
 
 def save_org_changes(
@@ -314,6 +314,67 @@ def save_org_changes(
 
 def render_update_org_unit_form(selected_org_unit: Participant) -> None:
     """Renders the update dialog"""
+
+    def get_org_changes() -> dict[str, str | None]:
+        return {
+            "display_name": (
+                display_name
+                if selected_org_unit.display_name != display_name
+                else None
+            ),
+            "name": (name if selected_org_unit.name != name else None),
+            "description": (
+                description
+                if selected_org_unit.description != description
+                else None
+            ),
+            "state": (
+                state_toggle
+                if state_toggle != str(selected_org_unit.state)
+                else None
+            ),
+        }
+
+    def process_org_changes(
+        pati_repo: ParticipantRepository, roles_changed
+    ) -> None:
+        org_changes = {
+            k: v for k, v in get_org_changes().items() if v is not None
+        }
+
+        if org_changes:
+            save_org_changes(pati_repo, selected_org_unit, org_changes)
+            time.sleep(1)
+            st.rerun()
+        else:
+            if not roles_changed:
+                st.info("No changes to save")
+            else:
+                # Only roles got changed
+                pati_repo.commit()
+                get_org_units.clear()
+                st.success(f"Org Unit {selected_org_unit.display_name} saved")
+                st.rerun()
+
+    def process_form_submission() -> None:
+        if len(display_name) == 0:
+            st.error("Display name cannot be empty")
+            st.stop()
+
+        with ParticipantRepository(get_db()) as pati_repo:
+
+            try:
+                roles_changed = save_role_changes(
+                    pati_repo, selected_org_unit, selected_roles
+                )
+            except Exception as e:
+                pati_repo.rollback()
+                logger.exception(e)
+                st.exception(e)
+                raise
+            else:
+                process_org_changes(pati_repo, roles_changed)
+
     enforcer = get_policy_enforcer()
     disabled = not enforcer.enforce(
         st.session_state.username, "org_units", "write"
@@ -364,63 +425,7 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
         )  # do not let them change it here disabled
 
         if st.form_submit_button("Save", disabled=disabled):
-            if len(display_name) == 0:
-                st.error("Display name cannot be empty")
-                st.stop()
-
-            with ParticipantRepository(get_db()) as pati_repo:
-
-                try:
-                    role_changes = save_role_changes(
-                        pati_repo, selected_org_unit, selected_roles
-                    )
-                except Exception as e:
-                    pati_repo.rollback()
-                    logger.exception(e)
-                    st.exception(e)
-                    raise
-                else:
-                    org_changes = {
-                        "display_name": (
-                            display_name
-                            if selected_org_unit.display_name != display_name
-                            else None
-                        ),
-                        "name": (
-                            name if selected_org_unit.name != name else None
-                        ),
-                        "description": (
-                            description
-                            if selected_org_unit.description != description
-                            else None
-                        ),
-                        "state": (
-                            state_toggle
-                            if state_toggle != str(selected_org_unit.state)
-                            else None
-                        ),
-                    }
-                    org_changes = {
-                        k: v for k, v in org_changes.items() if v is not None
-                    }
-
-                    if org_changes:
-                        save_org_changes(
-                            pati_repo, selected_org_unit, org_changes
-                        )
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        if not role_changes:
-                            st.info("No changes to save")
-                        else:
-                            # Only roles got changed
-                            pati_repo.commit()
-                            get_org_units.clear()
-                            st.success(
-                                f"Org Unit {selected_org_unit.display_name} saved"
-                            )
-                            st.rerun()
+            process_form_submission()
 
 
 def render_org_units() -> None:
