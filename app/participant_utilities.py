@@ -11,8 +11,8 @@ from humanfriendly import format_timespan
 from participants import (
     Participant,
     ParticipantRepository,
-    ParticipantType,
     ParticipantState,
+    ParticipantType,
 )
 from who_called_me import who_called_me
 

@@ -9,11 +9,11 @@ from common import get_policy_enforcer, safe_index
 from config import settings
 from db import get_db
 from participant_utilities import (
+    check_pati_exists,
     get_org_units,
     get_participant_by_display_name,
     get_roles,
     get_users,
-    check_pati_exists,
 )
 from participants import (
     Participant,

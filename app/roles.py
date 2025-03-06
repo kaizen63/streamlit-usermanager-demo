@@ -9,9 +9,9 @@ from common import check_access, get_policy_enforcer, safe_index
 from config import settings
 from db import get_db
 from participant_utilities import (
+    check_pati_exists,
     get_participant_by_name,
     get_roles,
-    check_pati_exists,
 )
 from participants import (
     Participant,

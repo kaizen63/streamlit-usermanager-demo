@@ -2,6 +2,7 @@
 
 import logging
 from enum import StrEnum
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -14,7 +15,6 @@ from dataframe_utilities import (
 )
 from db import get_db
 from participants import Participant, ParticipantRepository
-from typing import Any
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
