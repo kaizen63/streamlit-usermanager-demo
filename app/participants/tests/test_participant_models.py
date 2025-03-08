@@ -9,6 +9,7 @@ from ..models import (
     ParticipantState,
     ParticipantType,
     ParticipantUpdate,
+    is_valid_name,
 )
 
 
@@ -18,7 +19,7 @@ def test_participant_model() -> None:
         {
             "id": 1,
             "name": "test",
-            "display_name": " Display, Name ",
+            "display_name": " Display, Name ",  # whitespaces added intentionally
             "email": "efpyi@example.com",
             "participant_type": ParticipantType.HUMAN,
             "state": ParticipantState.ACTIVE,
@@ -38,6 +39,42 @@ def test_participant_model() -> None:
     assert p.external_reference is None
     assert p.updated_by is None
     assert p.updated_timestamp is None
+
+
+def test_participant_model_wrong_name_start() -> None:
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValidationError):
+        _ = Participant.model_validate(
+            {
+                "id": 1,
+                "name": "0abc",
+                "display_name": "Display, Name",
+                "email": "efpyi@example.com",
+                "participant_type": ParticipantType.HUMAN,
+                "state": "ACTIVE",
+                "created_by": "admin",
+                "created_timestamp": now,
+                "external_reference": None,
+            }
+        )
+
+
+def test_participant_model_wrong_name_length() -> None:
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValidationError):
+        _ = Participant.model_validate(
+            {
+                "id": 1,
+                "name": "a123456789012345678901234567890",
+                "display_name": "Display, Name",
+                "email": "efpyi@example.com",
+                "participant_type": ParticipantType.HUMAN,
+                "state": "ACTIVE",
+                "created_by": "admin",
+                "created_timestamp": now,
+                "external_reference": None,
+            }
+        )
 
 
 def test_participant_model_wrong_email() -> None:
@@ -246,6 +283,22 @@ def test_participant_update_wrong_state() -> None:
         )
 
 
+def test_participant_update_wrong_name() -> None:
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValidationError):
+        _ = ParticipantUpdate.model_validate(
+            {
+                "name": "0a",
+                "display_name": "Display, Name",
+                "email": "efpyi@example.com",
+                "state": "TERMINATED",
+                "external_reference": None,
+                "updated_by": "admin",
+                "updated_timestamp": now,
+            }
+        )
+
+
 def test_participant_update_wrong_email() -> None:
     now = datetime.now(timezone.utc)
     with pytest.raises(ValidationError):
@@ -336,3 +389,23 @@ def test_pati_model_create(
     assert create.participant_type == participant_type
     assert create.created_by == created_by.upper()
     assert create.name == expected_result
+
+
+@pytest.mark.parametrize(
+    "name, expected_result",
+    [
+        (None, False),
+        ("", False),
+        ("_abcdefg", False),
+        ("0abcdefg", False),
+        ("a", False),
+        ("ab", True),
+        ("poitsch", True),
+        ("ab_cde-fgh", True),
+        ("ab_cde-fgh?", False),
+        ("a12345678901234567890123456789", True),
+        ("a123456789012345678901234567890", False),
+    ],
+)
+def test_is_valid_name(name: str, expected_result: bool) -> None:
+    assert is_valid_name(name) == expected_result

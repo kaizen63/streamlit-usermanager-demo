@@ -50,17 +50,19 @@ ParticipantStateLiteral: TypeAlias = Literal["ACTIVE", "TERMINATED"]
 # ParticipantState.ACTIVE, ParticipantState.TERMINATED
 # ]
 
+VALID_NAME_PATTERN = r"^[a-zA-Z][a-zA-Z0-9_-]{1,29}$"
 
-def is_valid_name(name: str) -> bool:
+
+def is_valid_name(name: str | None) -> bool:
     """
     Checks if a name is valid.
     A valid name must:
     - Start with a letter (uppercase or lowercase)
     - Contain only letters (uppercase or lowercase), digits, underscores and hyphens
-    - Be between 2 and 20 characters long
+    - Be between 2 and 30 characters long
     """
-    pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{1,30}$")
-    return bool(pattern.match(name))
+    pattern = re.compile(VALID_NAME_PATTERN)
+    return bool(pattern.match(name)) if name else False
 
 
 class ParticipantBase(SQLModel):
@@ -72,7 +74,11 @@ class ParticipantBase(SQLModel):
         "from_attributes": True,
     }
 
-    name: str = Field(..., max_length=30)
+    name: str = Field(
+        ...,
+        max_length=30,
+        schema_extra={"pattern": VALID_NAME_PATTERN},
+    )
     display_name: str = Field(..., max_length=60)
     description: Optional[str] = Field(default=None, max_length=500)
     email: Optional[str] = Field(default=None, max_length=200)
@@ -166,11 +172,10 @@ class ParticipantModel(ParticipantBase, table=True):
     )
     id: int | None = Field(default=None, primary_key=True)
     # redefine participant_type and state to strings to make the model work
-    participant_type: str = Field(..., max_length=30)
-
+    participant_type: str = Field(..., max_length=30)  # type: ignore
     state: str | None = Field(
         default=None, max_length=20, description="ACTIVE or TERMINATED"
-    )
+    )  # type: ignore
 
     updated_by: str | None = Field(default=None, max_length=30)
     updated_timestamp: datetime | None = Field(default=None)
@@ -260,7 +265,11 @@ class ParticipantUpdate(SQLModel):
         "from_attributes": True,
     }
     """Class to update a participant. All changed fields will be updated"""
-    name: Optional[str] = Field(default=None)
+    name: Optional[str] = Field(
+        default=None,
+        max_length=30,
+        schema_extra={"pattern": VALID_NAME_PATTERN},
+    )
     display_name: Optional[str] = Field(default=None, max_length=60)
     description: Optional[str] = Field(default=None, max_length=500)
     email: Optional[EmailStr] = Field(default=None, max_length=200)
