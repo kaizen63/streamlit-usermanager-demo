@@ -119,8 +119,8 @@ def render_create_role_form(title: str) -> None:
         else:
             if not is_valid_name(role_name.strip()):
                 st.error(
-                    "Invalid Name. Name must be at least 2 characters long, start with a letter,"
-                    + " can contain numbers, underscores and hyphens"
+                    "Invalid name. It must be at least 2 characters long, start with a letter, "
+                    "and may include numbers, underscores and hyphens."
                 )
                 st.stop()
 
