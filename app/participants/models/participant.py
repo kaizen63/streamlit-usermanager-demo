@@ -74,11 +74,7 @@ class ParticipantBase(SQLModel):
         "from_attributes": True,
     }
 
-    name: str = Field(
-        ...,
-        max_length=30,
-        schema_extra={"pattern": VALID_NAME_PATTERN},
-    )
+    name: str = Field(..., max_length=30)
     display_name: str = Field(..., max_length=60)
     description: Optional[str] = Field(default=None, max_length=500)
     email: Optional[str] = Field(default=None, max_length=200)

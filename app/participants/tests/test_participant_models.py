@@ -44,7 +44,7 @@ def test_participant_model() -> None:
 def test_participant_model_wrong_name_start() -> None:
     now = datetime.now(timezone.utc)
     with pytest.raises(ValidationError):
-        _ = Participant.model_validate(
+        _ = ParticipantCreate.model_validate(
             {
                 "id": 1,
                 "name": "0abc",
@@ -57,12 +57,18 @@ def test_participant_model_wrong_name_start() -> None:
                 "external_reference": None,
             }
         )
+    with pytest.raises(ValidationError):
+        _ = ParticipantUpdate.model_validate(
+            {
+                "name": "0abc",
+            }
+        )
 
 
 def test_participant_model_wrong_name_length() -> None:
     now = datetime.now(timezone.utc)
     with pytest.raises(ValidationError):
-        _ = Participant.model_validate(
+        _ = ParticipantCreate.model_validate(
             {
                 "id": 1,
                 "name": "a123456789012345678901234567890",
@@ -73,6 +79,13 @@ def test_participant_model_wrong_name_length() -> None:
                 "created_by": "admin",
                 "created_timestamp": now,
                 "external_reference": None,
+            }
+        )
+
+    with pytest.raises(ValidationError):
+        _ = ParticipantUpdate.model_validate(
+            {
+                "name": "a123456789012345678901234567890",
             }
         )
 
