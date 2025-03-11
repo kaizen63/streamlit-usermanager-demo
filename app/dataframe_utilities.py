@@ -8,11 +8,14 @@ import pandas as pd
 import streamlit as st
 from common import safe_index
 from config import settings
-from who_called_me import who_called_me2
 
 LabelVisibilityType: TypeAlias = Literal["visible", "hidden", "collapsed"]
 
 logger = logging.getLogger(settings.LOGGER_NAME)
+
+
+class MissingKeyPrefixError(Exception):
+    pass
 
 
 def reformat_path(input_path: str) -> str:
@@ -36,7 +39,7 @@ def render_filter_menu(
     exclude_columns: list[str] | None = None,
     label: str = "Filter By",
     label_visibility: LabelVisibilityType = "visible",
-    key_prefix: str | None = None,
+    key_prefix: str,
     select_column: str | None = None,
 ) -> pd.DataFrame:
     """Renders the filter menu and values menu. Returns the filtered dataframe if filtering is enabled.
@@ -46,12 +49,9 @@ def render_filter_menu(
     if exclude_columns is None:
         exclude_columns = []
     if not key_prefix:
-        filename, line_no, function = who_called_me2()
-        key1 = f"filter_select_{reformat_path(filename)}_{line_no}_{function}"
-        key2 = f"filter_multiselect_{reformat_path(filename)}_{line_no}_{function}"
-    else:
-        key1 = f"{key_prefix}_1"
-        key2 = f"{key_prefix}_2"
+        raise MissingKeyPrefixError
+    key1 = f"{key_prefix}_name"
+    key2 = f"{key_prefix}_values"
 
     columns = sorted([c for c in df.columns if c not in exclude_columns])
     index = safe_index(columns, select_column, 0)
@@ -88,21 +88,21 @@ def key_function(col: pd.Series) -> pd.Series:
 
 def render_sort_menu(
     df: pd.DataFrame,
+    key_prefix: str,
     exclude_columns: list[str] | None = None,
-    key_prefix: str | None = None,
 ) -> pd.DataFrame:
     """Renders the sort menu and returns a sorted df if sorting is enabled.
     key_prefix: Unique prefix for the elements in thi sort menu box"""
 
     def generate_key(suffix: str) -> str:
-        if key_prefix:
-            return f"{key_prefix}_{suffix}"
-        filename, line_no, function = who_called_me2(1)
-        return f"{suffix}_{reformat_path(filename)}_{line_no}_{function}"
+        return f"{key_prefix}_{suffix}"
 
     sort_menu = st.columns(3)
     if exclude_columns is None:
         exclude_columns = []
+    if not key_prefix:
+        raise MissingKeyPrefixError
+
     key1 = generate_key("filter_sort_radio")
     key2 = generate_key("sort_select")
     key3 = generate_key("sort_direction")
@@ -144,7 +144,7 @@ def calculate_total_pages(total_size: int, page_size: int) -> int:
 
 
 def render_pagination_menu(
-    df: pd.DataFrame, key_prefix: str | None = None
+    df: pd.DataFrame, key_prefix: str
 ) -> tuple[int, int]:
     """Renders the bottom menu with page count and batch size.
     Returns:
@@ -152,13 +152,12 @@ def render_pagination_menu(
     """
 
     def generate_key(suffix: str) -> str:
-        if key_prefix:
-            return f"{key_prefix}_{suffix}"
-        filename, line_no, function = who_called_me2(1)
-        return f"{suffix}_{reformat_path(filename)}_{line_no}_{function}"
+        return f"{key_prefix}_{suffix}"
 
-    key1 = generate_key("pagination_select")
-    key2 = generate_key("page_input")
+    if not key_prefix:
+        raise MissingKeyPrefixError
+    key1 = generate_key("page_size")
+    key2 = generate_key("page_number")
 
     pagination_menu = st.columns((4, 1, 1))
     with pagination_menu[2]:
