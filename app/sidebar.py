@@ -45,10 +45,8 @@ def render_user_roles(
     if "PUBLIC" in all_roles:
         all_roles.remove("PUBLIC")
     for i, role in enumerate(all_roles):
-        key = f"sidebar_roles_{i}"
-        value = (
-            role in users_effective_roles if role != "ADMINISTRATOR" else False
-        )
+        key = f"sidebar_roles_{role}"
+        value = role in users_effective_roles
         st.checkbox(
             role,
             value=value,
@@ -59,7 +57,7 @@ def render_user_roles(
         )
 
 
-def render_sidebar(auth: Authenticate, user: dict[str, Any]) -> None:
+def render_sidebar(auth: Authenticate) -> None:
     """Render the sidebar"""
 
     def render_logout_form(user: str):

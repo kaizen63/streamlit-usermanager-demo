@@ -385,7 +385,7 @@ def main() -> None:
             return
 
         init_session_state()
-        render_sidebar(auth, user)
+        render_sidebar(auth)
 
         if st.session_state.get("must_register", False) and user_is_manager():
             render_self_registration_form("## Self Registration")
