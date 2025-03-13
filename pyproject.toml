@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "streamlit~=1.42",
+    "streamlit~=1.43",
     "python-dotenv>=1.0.1",
     "streamlit-ldap-authenticator~=0.2.5",
     "streamlit-extras~=0.5.0",
