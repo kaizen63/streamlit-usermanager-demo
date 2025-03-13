@@ -1,6 +1,6 @@
 # Makefile for linting Python code with flake8
 
-.PHONY: fmt lint tests clean
+.PHONY: fmt lint tests clean update
 
 # Directory containing Python files
 PYTHON_DIR = ./app
@@ -33,3 +33,7 @@ coverage:
 clean:
 	@echo "Cleaning up..."
 	rm -rf .flake8
+
+update:
+	@echo "Updating..."
+	uv sync -U
