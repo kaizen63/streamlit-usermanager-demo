@@ -169,9 +169,7 @@ def save_role_changes(
 def render_org_units_selectbox() -> Optional[Participant]:
     """Renders the Org Units selectbox. Shows the Org Units display names"""
     show_only_active = st.toggle(label="Show only active", value=True)
-    all_org_units = get_org_units(
-        only_active=show_only_active, include_relations=False
-    )
+    all_org_units = get_org_units(only_active=show_only_active, include_relations=False)
     org_units = [o.display_name for o in all_org_units]
     key = "org_units_selectbox"
     selected_key = key + "_selected"
@@ -205,9 +203,7 @@ def check_org_unit_exists(
 ) -> bool:
     """Checks if the user exists by name or display name, whether active or terminated.
     Returns True if the user already exists, False otherwise."""
-    return check_pati_exists(
-        pati_repo, ParticipantType.ORG_UNIT, name, display_name
-    )
+    return check_pati_exists(pati_repo, ParticipantType.ORG_UNIT, name, display_name)
 
 
 def render_create_org_unit_form(title: str) -> None:
@@ -231,9 +227,7 @@ def render_create_org_unit_form(title: str) -> None:
 
             org_unit_name = org_unit_name.upper()
             with ParticipantRepository(get_db()) as pati_repo:
-                if check_org_unit_exists(
-                    pati_repo, org_unit_name, display_name
-                ):
+                if check_org_unit_exists(pati_repo, org_unit_name, display_name):
                     return
                 try:
                     create = ParticipantCreate(
@@ -318,29 +312,19 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
     def get_org_changes() -> dict[str, str | None]:
         return {
             "display_name": (
-                display_name
-                if selected_org_unit.display_name != display_name
-                else None
+                display_name if selected_org_unit.display_name != display_name else None
             ),
             "name": (name if selected_org_unit.name != name else None),
             "description": (
-                description
-                if selected_org_unit.description != description
-                else None
+                description if selected_org_unit.description != description else None
             ),
             "state": (
-                state_toggle
-                if state_toggle != str(selected_org_unit.state)
-                else None
+                state_toggle if state_toggle != str(selected_org_unit.state) else None
             ),
         }
 
-    def process_org_changes(
-        pati_repo: ParticipantRepository, roles_changed
-    ) -> None:
-        org_changes = {
-            k: v for k, v in get_org_changes().items() if v is not None
-        }
+    def process_org_changes(pati_repo: ParticipantRepository, roles_changed) -> None:
+        org_changes = {k: v for k, v in get_org_changes().items() if v is not None}
 
         if org_changes:
             save_org_changes(pati_repo, selected_org_unit, org_changes)
@@ -362,7 +346,6 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
             st.stop()
 
         with ParticipantRepository(get_db()) as pati_repo:
-
             try:
                 roles_changed = save_role_changes(
                     pati_repo, selected_org_unit, selected_roles
@@ -376,9 +359,7 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
                 process_org_changes(pati_repo, roles_changed)
 
     enforcer = get_policy_enforcer()
-    disabled = not enforcer.enforce(
-        st.session_state.username, "org_units", "write"
-    )
+    disabled = not enforcer.enforce(st.session_state.username, "org_units", "write")
     with st.form(key="update_org_unit_form", border=False):
         index = 0 if selected_org_unit.state == ParticipantState.ACTIVE else 1
         state_toggle = st.radio(
@@ -410,9 +391,7 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
             selected_org_unit,
             True,
         )  # do not let them change it here disabled
-        selected_roles = render_roles_granted_to_org(
-            "", selected_org_unit, disabled
-        )
+        selected_roles = render_roles_granted_to_org("", selected_org_unit, disabled)
         render_users_of_org(
             "",
             selected_org_unit,

@@ -26,9 +26,7 @@ def render_debug_page() -> None:
         ),
         expanded=False,
     )
-    if check_access(
-        st.session_state.current_user["username"], "settings", "read"
-    ):
+    if check_access(st.session_state.current_user["username"], "settings", "read"):
         st.write("## Application Settings")
         fields = settings.model_fields.keys()
         # Do not show sensitive information

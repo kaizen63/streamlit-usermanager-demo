@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Literal
+from typing import Literal
 
 import streamlit as st
 from common import (
@@ -109,9 +109,7 @@ def render_sidebar(auth: Authenticate) -> None:
 
             if is_administrator(st.session_state.username):
                 if st.button("Clear caches"):
-                    logger.info(
-                        "Clear caches was requested via user interface."
-                    )
+                    logger.info("Clear caches was requested via user interface.")
                     st.cache_data.clear()
 
 
@@ -126,9 +124,7 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
         st.session_state["must_register"] = False
         st.session_state["policy_enforcer"] = None
 
-        connection: SQLConnection | None = st.session_state.get(
-            "db_connection"
-        )
+        connection: SQLConnection | None = st.session_state.get("db_connection")
         if connection:
             connection.engine.dispose()
             st.session_state["db_connection"] = None

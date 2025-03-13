@@ -60,5 +60,5 @@ else:
             if exit_code != 0:
                 print(f"Cannot kill container {CONTAINER_NAME}")
                 sys.exit(exit_code)
-        except Exception as e:
+        except Exception:
             print(f"Failed to kill container {CONTAINER_NAME}")

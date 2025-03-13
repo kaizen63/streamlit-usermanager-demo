@@ -81,9 +81,7 @@ def create_connection(
     else:
         connect_args = dict()
 
-    logger.debug(
-        f"Connecting to database: {db_url}. Caller={who_called_me(1)}"
-    )
+    logger.debug(f"Connecting to database: {db_url}. Caller={who_called_me(1)}")
     if use_setinputsizes is None:
         connection = st.connection(
             "mydb",
@@ -161,9 +159,7 @@ def is_sqlite(engine: Engine) -> bool:
     return "sqlite" in inspector.dialect.name.lower()
 
 
-def inject_sa_column_kwargs(
-    model: Any, column_name: str, sa_column_kwargs: dict
-):
+def inject_sa_column_kwargs(model: Any, column_name: str, sa_column_kwargs: dict):
     # Get the table object from SQLAlchemy metadata
     table = model.__table__
 
@@ -176,9 +172,7 @@ def inject_sa_column_kwargs(
         for key, value in sa_column_kwargs.items():
             setattr(column, key, value)
     else:
-        raise ValueError(
-            f"Column {column_name} not found in {model.__name__} table."
-        )
+        raise ValueError(f"Column {column_name} not found in {model.__name__} table.")
 
 
 def create_db_and_tables(engine: Engine) -> None:
@@ -222,9 +216,7 @@ def create_db_engine(
     else:
         connect_args = dict()
     if use_setinputsizes is None:
-        engine = create_engine(
-            db_url, connect_args=connect_args, echo=echo, **kwargs
-        )
+        engine = create_engine(db_url, connect_args=connect_args, echo=echo, **kwargs)
     else:
         engine = create_engine(
             db_url,

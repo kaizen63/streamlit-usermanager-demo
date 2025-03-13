@@ -36,9 +36,7 @@ from validate_email import validate_email
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def render_roles(
-    title: str, selected_user: Participant, disabled: bool
-) -> list[str]:
+def render_roles(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
     users_roles: Optional[set[str]] = set(
@@ -50,8 +48,7 @@ def render_roles(
             r
             for r in APP_ROLES
             if r != "ADMINISTRATOR"
-            or "ADMINISTRATOR"
-            in st.session_state.current_user["effective_roles"]
+            or "ADMINISTRATOR" in st.session_state.current_user["effective_roles"]
         ]
     )
     key = "users_roles_multiselect"
@@ -154,9 +151,7 @@ def render_proxy_of(
     return proxy_of
 
 
-def render_proxies(
-    title: str, selected_user: Participant, disabled: bool
-) -> list[str]:
+def render_proxies(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the proxies"""
     st.write(title)
     selected_users_proxies: Optional[set[str]] = set(
@@ -165,9 +160,7 @@ def render_proxies(
     if not selected_users_proxies:
         selected_users_proxies = None
     all_users = [
-        x.display_name
-        for x in get_users(only_active=True)
-        if x.id != selected_user.id
+        x.display_name for x in get_users(only_active=True) if x.id != selected_user.id
     ]
     dis = disabled or (
         True if (selected_user.state == ParticipantState.TERMINATED) else False
@@ -403,9 +396,7 @@ def add_proxy_of(
     if not proxy_of:
         return
     try:
-        user_ids = get_participant_ids(
-            ParticipantType.HUMAN, "display_name", proxy_of
-        )
+        user_ids = get_participant_ids(ParticipantType.HUMAN, "display_name", proxy_of)
 
         add_relations(
             pati_repo,
@@ -430,9 +421,7 @@ def delete_proxy_of(
     if not proxy_of:
         return
     try:
-        user_ids = get_participant_ids(
-            ParticipantType.HUMAN, "display_name", proxy_of
-        )
+        user_ids = get_participant_ids(ParticipantType.HUMAN, "display_name", proxy_of)
         delete_relations(
             pati_repo,
             participant,
@@ -469,9 +458,7 @@ def delete_orgs(
         logger.exception(e)
         raise e
     else:
-        logger.debug(
-            f"User removed from these Org Units: {', '.join(org_units)}"
-        )
+        logger.debug(f"User removed from these Org Units: {', '.join(org_units)}")
 
 
 def add_proxy(
@@ -483,9 +470,7 @@ def add_proxy(
     if not proxies:
         return
     try:
-        user_ids = get_participant_ids(
-            ParticipantType.HUMAN, "display_name", proxies
-        )
+        user_ids = get_participant_ids(ParticipantType.HUMAN, "display_name", proxies)
         add_reverse_relations(
             pati_repo,
             participant,
@@ -509,9 +494,7 @@ def delete_proxy(
     if not proxies:
         return
     try:
-        user_ids = get_participant_ids(
-            ParticipantType.HUMAN, "display_name", proxies
-        )
+        user_ids = get_participant_ids(ParticipantType.HUMAN, "display_name", proxies)
         delete_reverse_relations(
             pati_repo,
             participant,
@@ -536,9 +519,7 @@ def process_participant_changes(
     current_items: list[str],
     selected_items: list[str],
     add_func: Callable[[ParticipantRepository, Participant, list[str]], None],
-    delete_func: Callable[
-        [ParticipantRepository, Participant, list[str]], None
-    ],
+    delete_func: Callable[[ParticipantRepository, Participant, list[str]], None],
 ) -> bool:
     """Processes the add and delete of an entity"""
 
@@ -573,9 +554,7 @@ def save_user_changes(
 ) -> bool:
     """Saves the changes to the database. Returns True if a change was made to the database"""
     changed_something = False
-    logger.info(
-        f"Saving user: {selected_user.name}: {selected_user.display_name}"
-    )
+    logger.info(f"Saving user: {selected_user.name}: {selected_user.display_name}")
     if user_changes:
         user_changes["updated_by"] = st.session_state.username
         update = ParticipantUpdate.model_validate(user_changes)
@@ -693,9 +672,7 @@ def check_user_exists(
 ) -> bool:
     """Checks if the user exists by name or display name, whether active or terminated.
     Returns True if the user already exists, False otherwise."""
-    return check_pati_exists(
-        pati_repo, ParticipantType.HUMAN, name, display_name
-    )
+    return check_pati_exists(pati_repo, ParticipantType.HUMAN, name, display_name)
 
 
 def render_create_user_form(title: str) -> None:
@@ -755,9 +732,7 @@ def render_create_user_form(title: str) -> None:
             if not display_name or not username or not email:
                 st.error("Please fill in all fields")
             else:
-                process_form_submission(
-                    username, display_name, email, description
-                )
+                process_form_submission(username, display_name, email, description)
 
 
 def render_user_selectbox() -> Optional[Participant]:
@@ -767,9 +742,7 @@ def render_user_selectbox() -> Optional[Participant]:
     usernames = sorted(
         [
             u.display_name
-            for u in get_users(
-                only_active=show_only_active, include_relations=False
-            )
+            for u in get_users(only_active=show_only_active, include_relations=False)
         ]
     )
     key = "users_selectbox"
@@ -808,28 +781,20 @@ def render_update_user_form(selected_user: Participant) -> None:
     def get_user_changes() -> dict[str, str | None]:
         return {
             "description": (
-                description
-                if selected_user.description != description
-                else None
+                description if selected_user.description != description else None
             ),
             "display_name": (
-                display_name
-                if selected_user.display_name != display_name
-                else None
+                display_name if selected_user.display_name != display_name else None
             ),
             "state": (
-                state_toggle
-                if state_toggle != str(selected_user.state)
-                else None
+                state_toggle if state_toggle != str(selected_user.state) else None
             ),
             "email": email if selected_user.email != email else None,
         }
 
     # noinspection PyShadowingNames
     def process_form_submission(pati_repo: ParticipantRepository):
-        user_changes = {
-            k: v for k, v in get_user_changes().items() if v is not None
-        }
+        user_changes = {k: v for k, v in get_user_changes().items() if v is not None}
         try:
             updated: bool = save_user_changes(
                 pati_repo,
@@ -859,9 +824,7 @@ def render_update_user_form(selected_user: Participant) -> None:
             time.sleep(1)
 
     enforcer = get_policy_enforcer()
-    disabled = not enforcer.enforce(
-        st.session_state.username, "users", "write"
-    )
+    disabled = not enforcer.enforce(st.session_state.username, "users", "write")
 
     index = 0 if selected_user.state == ParticipantState.ACTIVE else 1
 
@@ -873,9 +836,7 @@ def render_update_user_form(selected_user: Participant) -> None:
         index=index,
         disabled=disabled,
     )
-    st.text_input(
-        label="Account Name", value=selected_user.name, disabled=True
-    )
+    st.text_input(label="Account Name", value=selected_user.name, disabled=True)
     display_name = st.text_input(
         label="Display Name",
         value=selected_user.display_name,
@@ -895,9 +856,7 @@ def render_update_user_form(selected_user: Participant) -> None:
     with st.form(key="update_user_form", clear_on_submit=False):
         columns = st.columns(3)
         with columns[0]:
-            selected_roles = render_roles(
-                "### Roles", selected_user, disabled=disabled
-            )
+            selected_roles = render_roles("### Roles", selected_user, disabled=disabled)
         with columns[1]:
             selected_org_units = render_org_units(
                 "### Member of", selected_user, disabled=disabled
@@ -977,9 +936,7 @@ def render_self_registration_form(title: str) -> None:
                 finalize_registration(pati_repo, username)
 
     # noinspection PyShadowingNames
-    def finalize_registration(
-        pati_repo: ParticipantRepository, username: str
-    ) -> None:
+    def finalize_registration(pati_repo: ParticipantRepository, username: str) -> None:
         enforcer = get_policy_enforcer()
         enforcer.add_role_for_user(username, AppRoles.USER_READ)
         pati_repo.commit()
@@ -999,9 +956,7 @@ def render_self_registration_form(title: str) -> None:
 
     with st.form(key="register_manager_form", clear_on_submit=False):
         username = st.text_input("EnterpriseID", value=login_user["username"])
-        display_name = st.text_input(
-            "Display Name", value=login_user["display_name"]
-        )
+        display_name = st.text_input("Display Name", value=login_user["display_name"])
         email = st.text_input("Email", value=login_user["email"])
         job_title = st.text_input("Job Title", value=login_user["title"])
 

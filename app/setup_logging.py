@@ -173,9 +173,7 @@ class MyJSONFormatter(logging.Formatter):
         message = self._prepare_log_dict(record)
         return json.dumps(message, default=str)
 
-    def _prepare_log_dict(
-        self, record: logging.LogRecord
-    ) -> dict[str, str | None]:
+    def _prepare_log_dict(self, record: logging.LogRecord) -> dict[str, str | None]:
         log_data = {
             "message": record.getMessage(),
             "timestamp": dt.datetime.fromtimestamp(
@@ -187,9 +185,7 @@ class MyJSONFormatter(logging.Formatter):
             log_data.update(
                 {
                     "username": st.session_state.current_user["username"],
-                    "user_display_name": st.session_state.current_user[
-                        "display_name"
-                    ],
+                    "user_display_name": st.session_state.current_user["display_name"],
                 }
             )
 

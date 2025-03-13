@@ -38,16 +38,12 @@ def render_roles_selectbox() -> Optional[Participant]:
     )
 
     all_roles: list[Participant] = get_roles(only_active=show_only_active)
-    roles = sorted(
-        [role.name for role in all_roles if role.name not in exclude_roles]
-    )
+    roles = sorted([role.name for role in all_roles if role.name not in exclude_roles])
     key = "roles_selectbox"
     selected_key = f"{key}_selected"
     index = safe_index(roles, st.session_state.get(selected_key), 0)
 
-    selected = st.selectbox(
-        label="Select a role", options=roles, key=key, index=index
-    )
+    selected = st.selectbox(label="Select a role", options=roles, key=key, index=index)
     if selected:
         st.session_state[selected_key] = selected
         if selected_role := get_participant_by_name(
@@ -68,9 +64,7 @@ def render_participants_granted_this_role(
 ) -> list[str]:
     """Render the participants the selected role is granted to."""
     with ParticipantRelationRepository(get_db()) as repo:
-        users_granted_this_role = repo.get_reverse(
-            selected_role.id, ("GRANT",)
-        )
+        users_granted_this_role = repo.get_reverse(selected_role.id, ("GRANT",))
         if users_granted_this_role:
             options = [
                 m.participant.display_name
@@ -102,9 +96,7 @@ def check_role_exists(
 ) -> bool:
     """Checks if the role exists by name or display name, whether active or terminated.
     Returns True if the user already exists, False otherwise."""
-    return check_pati_exists(
-        pati_repo, ParticipantType.ROLE, name, display_name
-    )
+    return check_pati_exists(pati_repo, ParticipantType.ROLE, name, display_name)
 
 
 def render_create_role_form(title: str) -> None:
@@ -164,9 +156,7 @@ def render_create_role_form(title: str) -> None:
             placeholder="",
         )
         display_name = st.text_input("Display Name", placeholder="", help="")
-        description = st.text_input(
-            "Description (Optional)", placeholder="", help=""
-        )
+        description = st.text_input("Description (Optional)", placeholder="", help="")
 
         if st.form_submit_button("Create"):
             process_form_submission(role_name, display_name, description)
@@ -178,19 +168,13 @@ def render_update_role_form(selected_role: Participant) -> None:
     def get_role_changes() -> dict[str, str | None]:
         return {
             "display_name": (
-                display_name
-                if selected_role.display_name != display_name
-                else None
+                display_name if selected_role.display_name != display_name else None
             ),
             "description": (
-                description
-                if selected_role.description != description
-                else None
+                description if selected_role.description != description else None
             ),
             "state": (
-                state_toggle
-                if state_toggle != str(selected_role.state)
-                else None
+                state_toggle if state_toggle != str(selected_role.state) else None
             ),
         }
 
@@ -198,9 +182,7 @@ def render_update_role_form(selected_role: Participant) -> None:
         if len(display_name) == 0:
             st.error("Display name cannot be empty")
             st.stop()
-        role_changes = {
-            k: v for k, v in get_role_changes().items() if v is not None
-        }
+        role_changes = {k: v for k, v in get_role_changes().items() if v is not None}
         if role_changes:
             role_changes["updated_by"] = st.session_state.username
             update = ParticipantUpdate.model_validate(role_changes)
@@ -218,9 +200,7 @@ def render_update_role_form(selected_role: Participant) -> None:
         else:
             st.info("No changes to save")
 
-    def finalize_update(
-        pati_repo: ParticipantRepository, role_name: str
-    ) -> None:
+    def finalize_update(pati_repo: ParticipantRepository, role_name: str) -> None:
         pati_repo.commit()
         get_roles.clear()
         st.success(f"Role {role_name!a} saved")
@@ -228,9 +208,7 @@ def render_update_role_form(selected_role: Participant) -> None:
         st.rerun()
 
     enforcer = get_policy_enforcer()
-    disabled = not enforcer.enforce(
-        st.session_state.username, "roles", "write"
-    )
+    disabled = not enforcer.enforce(st.session_state.username, "roles", "write")
 
     with st.form(key="update_role_form", border=False):
         index = 0 if selected_role.state == ParticipantState.ACTIVE else 1
@@ -266,12 +244,8 @@ def render_roles() -> None:
             st.stop()
 
         render_update_role_form(selected_role)
-        render_participants_granted_this_role(
-            selected_role, ParticipantType.HUMAN
-        )
-        render_participants_granted_this_role(
-            selected_role, ParticipantType.ORG_UNIT
-        )
+        render_participants_granted_this_role(selected_role, ParticipantType.HUMAN)
+        render_participants_granted_this_role(selected_role, ParticipantType.ORG_UNIT)
 
     enforcer = get_policy_enforcer()
     if enforcer.enforce(st.session_state.username, "roles", "create"):

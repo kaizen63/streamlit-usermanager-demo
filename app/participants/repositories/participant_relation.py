@@ -162,12 +162,9 @@ class ParticipantRelationRepository(RepositoryBase):
             statement: Select = select(ParticipantRelationModel).where(
                 ParticipantRelationModel.pati1_id == pati_rel.pati1_id,
                 ParticipantRelationModel.pati2_id == pati_rel.pati2_id,
-                ParticipantRelationModel.relation_type
-                == pati_rel.relation_type,
+                ParticipantRelationModel.relation_type == pati_rel.relation_type,
             )
-            result: ParticipantRelationModel = self.session.exec(
-                statement
-            ).one()
+            result: ParticipantRelationModel = self.session.exec(statement).one()
         except NoResultFound:
             return False
         except Exception as e:
@@ -200,9 +197,7 @@ class ParticipantRelationRepository(RepositoryBase):
                 return None
 
         except Exception as e:
-            logger.exception(
-                f"Failed: when creating participant relation. - {e}"
-            )
+            logger.exception(f"Failed: when creating participant relation. - {e}")
             raise
         else:
             self.session.flush()

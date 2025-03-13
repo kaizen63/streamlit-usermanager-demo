@@ -72,9 +72,7 @@ class ParticipantRepository(RepositoryBase):
                 )
             ).one_or_none()
         except Exception as e:
-            logger.exception(
-                f"get_by_name: {participant_type=}, {name=} - {e}"
-            )
+            logger.exception(f"get_by_name: {participant_type=}, {name=} - {e}")
             raise
 
         if result is None:
@@ -185,16 +183,12 @@ class ParticipantRepository(RepositoryBase):
             # Ensure `value` type matches expected type for the column
             if column == "id" and not isinstance(value, int):
                 return False
-            if column in ["name", "display_name"] and not isinstance(
-                value, str
-            ):
+            if column in ["name", "display_name"] and not isinstance(value, str):
                 return False
 
             # Perform the lookup
             if column == "id":
-                pati = lookup_methods[column](
-                    value, raise_error_if_not_found=False
-                )
+                pati = lookup_methods[column](value, raise_error_if_not_found=False)
             else:
                 pati = lookup_methods[column](
                     value, participant_type, raise_error_if_not_found=False
@@ -220,9 +214,7 @@ class ParticipantRepository(RepositoryBase):
             if only_active:
                 statement: Select = (
                     select(ParticipantModel)
-                    .where(
-                        ParticipantModel.participant_type == participant_type
-                    )
+                    .where(ParticipantModel.participant_type == participant_type)
                     .where(
                         or_(
                             ParticipantModel.state.is_(None),
@@ -258,9 +250,7 @@ class ParticipantRepository(RepositoryBase):
 
         Returns: The passed participant"""
         with ParticipantRelationRepository(self.session) as rel_repository:
-            relations: list[RelatedParticipant] = rel_repository.get(
-                participant.id
-            )
+            relations: list[RelatedParticipant] = rel_repository.get(participant.id)
             if not relations:
                 return participant
 
@@ -314,9 +304,7 @@ class ParticipantRepository(RepositoryBase):
             def get_granted_roles(participants: list[Participant]) -> set[str]:
                 roles = set()
                 for pati in participants:
-                    relations = rel_repository.get(
-                        pati.id, relation_type=("GRANT",)
-                    )
+                    relations = rel_repository.get(pati.id, relation_type=("GRANT",))
                     if relations:
                         roles.update(r.participant.name for r in relations)
                 return roles
@@ -615,9 +603,7 @@ class ParticipantRepository(RepositoryBase):
             )
             self.session.flush()
         except Exception as e:
-            logger.exception(
-                f"Error deleting relation of pati1 {participant.id=}: {e}"
-            )
+            logger.exception(f"Error deleting relation of pati1 {participant.id=}: {e}")
             raise e
         else:
             if result.rowcount == 0 and raise_error_if_not_found:

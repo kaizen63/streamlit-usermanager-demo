@@ -151,15 +151,11 @@ def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
 
     username = username or st.session_state.get("username", None)
-    if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get(
-        "roles", []
-    ):
+    if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get("roles", []):
         return True
 
-    if (
+    if username and "ADMINISTRATOR" in get_policy_enforcer().get_roles_for_user(
         username
-        and "ADMINISTRATOR"
-        in get_policy_enforcer().get_roles_for_user(username)
     ):
         return True
     return False
@@ -178,9 +174,7 @@ def filter_list(
         raise TypeError("exclude_keywords must be a list or tuple")
 
     return [
-        item
-        for item in items
-        if not any(word in item for word in exclude_keywords)
+        item for item in items if not any(word in item for word in exclude_keywords)
     ]
 
 

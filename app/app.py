@@ -57,9 +57,7 @@ def update_user_record(
 
     user_changes: dict[str, str | None] = {
         "display_name": (
-            user["displayName"]
-            if pati.display_name != user["displayName"]
-            else None
+            user["displayName"] if pati.display_name != user["displayName"] else None
         ),
         "email": (user["email"] if pati.email != user["email"] else None),
     }
@@ -113,9 +111,7 @@ def update_user_session_state(
         )
         # roles directly assigned or via org
         current_user["roles"] = pati_repo.compute_effective_roles(pati)
-        current_user["effective_roles"] = get_all_roles_of_roles(
-            current_user["roles"]
-        )
+        current_user["effective_roles"] = get_all_roles_of_roles(current_user["roles"])
     else:
         current_user["effective_roles"] = set()
         current_user["roles"] = set()
@@ -191,9 +187,7 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
             return True
         else:
             # Not a user in the database. Check the job title
-            logger.debug(
-                f"check_user: {username=} not known. Checking job title"
-            )
+            logger.debug(f"check_user: {username=} not known. Checking job title")
             if user_is_manager(user):
                 initialize_manager_user(user, username)
                 return True
@@ -278,7 +272,6 @@ def set_log_level() -> None:
         st.exception(ValueError(f"Unknown loglevel: {log_level}"))
         st.stop()
     else:
-
         if level_code != logger.level:
             logger.info(f"Set loglevel to {log_level}")
             logger.setLevel(level_code)
@@ -360,7 +353,6 @@ def init_session_state() -> None:
 
 
 def main() -> None:
-
     load_dotenv(find_dotenv(usecwd=True))
     # use LOG_CONFIG env variable to pass in the name of the file
     setup_logging(settings.LOGGING_CONFIG)
@@ -375,8 +367,7 @@ def main() -> None:
     # But: Callbacks need to reconnect to the database.
     #
     engine = get_engine()
-    with Session(engine) as db:
-
+    with Session(engine):
         logger.debug("Connected to database")
 
         auth = get_authenticator()

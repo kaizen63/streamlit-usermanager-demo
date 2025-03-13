@@ -180,9 +180,7 @@ def get_participant_ids(
     identifiers: list[str],
 ) -> list[int]:
     """Returns the participant ids of the participants by the identifier type"""
-    participant_fetchers: dict[
-        ParticipantType, Callable[..., list[Participant]]
-    ] = {
+    participant_fetchers: dict[ParticipantType, Callable[..., list[Participant]]] = {
         ParticipantType.HUMAN: get_users,
         ParticipantType.ROLE: get_roles,
         ParticipantType.ORG_UNIT: get_org_units,
@@ -215,15 +213,11 @@ def check_pati_exists(
         exists = pati_repo.exists(field, value, participant_type)
         if exists:
             status_msg = (
-                "but is not active"
-                if exists == ParticipantState.TERMINATED
-                else ""
+                "but is not active" if exists == ParticipantState.TERMINATED else ""
             )
             st.error(
                 f"{field.replace('_', ' ').title()}: {value!a} already exists {status_msg}".strip()
             )
         return bool(exists)
 
-    return pati_exists("name", name) or pati_exists(
-        "display_name", display_name
-    )
+    return pati_exists("name", name) or pati_exists("display_name", display_name)

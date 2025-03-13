@@ -119,14 +119,10 @@ Use this before storing back the record. Must be used in combination with a row 
         "email",
     )
     @classmethod
-    def check_valid_email(
-        cls, v: str | None, info: ValidationInfo
-    ) -> str | None:
+    def check_valid_email(cls, v: str | None, info: ValidationInfo) -> str | None:
         """Checks the email"""
         if v and not validate_email(v):
-            raise ValueError(
-                f"Invalid email address: {v!a} in {info.field_name}"
-            )
+            raise ValueError(f"Invalid email address: {v!a} in {info.field_name}")
         return v
 
     @field_validator("name", "created_by")
@@ -243,12 +239,9 @@ class Participant(ParticipantBase):
 
 
 class ParticipantCreate(ParticipantBase):
-
     @field_validator("name")
     @classmethod
-    def validate_name(
-        cls, v: Optional[str], info: ValidationInfo
-    ) -> Optional[str]:
+    def validate_name(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
         if v and not is_valid_name(v):
             raise ValueError(f"Invalid name: {v}")
         return v.upper() if v else v

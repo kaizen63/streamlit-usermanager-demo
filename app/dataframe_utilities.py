@@ -26,10 +26,7 @@ def reformat_path(input_path: str) -> str:
 # @st.cache_data(show_spinner=False)
 def split_dataframe(input_df: pd.DataFrame, rows: int) -> list[pd.DataFrame]:
     """Splits a dataframe in a list of dataframe with rows size"""
-    df = [
-        input_df.loc[i : i + rows - 1, :]
-        for i in range(0, len(input_df), rows)
-    ]
+    df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
     return df
 
 
@@ -73,17 +70,13 @@ def render_filter_menu(
             label_visibility=label_visibility,
         )
         if filter_values:
-            df = df[df[filter_field].isin(filter_values)].reset_index(
-                drop=True
-            )
+            df = df[df[filter_field].isin(filter_values)].reset_index(drop=True)
     return df
 
 
 def key_function(col: pd.Series) -> pd.Series:
     """Returns the sorting key function based on column type."""
-    return (
-        col if pd.api.types.is_datetime64_any_dtype(col) else col.str.lower()
-    )
+    return col if pd.api.types.is_datetime64_any_dtype(col) else col.str.lower()
 
 
 def render_sort_menu(
@@ -143,9 +136,7 @@ def calculate_total_pages(total_size: int, page_size: int) -> int:
     return (total_size + page_size - 1) // page_size
 
 
-def render_pagination_menu(
-    df: pd.DataFrame, key_prefix: str
-) -> tuple[int, int]:
+def render_pagination_menu(df: pd.DataFrame, key_prefix: str) -> tuple[int, int]:
     """Renders the bottom menu with page count and batch size.
     Returns:
          current_page, batch_size
@@ -168,9 +159,7 @@ def render_pagination_menu(
         )
     with pagination_menu[1]:
         page_size: int = (
-            len(df)
-            if batch_size_selected == "all"
-            else int(batch_size_selected)
+            len(df) if batch_size_selected == "all" else int(batch_size_selected)
         )
         total_pages = calculate_total_pages(len(df), page_size)
 

@@ -35,9 +35,7 @@ class MailAttachment:
         metadata={"description": "The path to the file to attach"}
     )
     mime_type: str = field(
-        metadata={
-            "description": "The mime type like text/plain or application/excel"
-        }
+        metadata={"description": "The mime type like text/plain or application/excel"}
     )
 
 
@@ -120,14 +118,10 @@ def send_email(
         response = sg.send(message)
     except Exception as error:
         logger.exception(f"Error: {error}")
-        logger.error(
-            f'Recipients: to={";".join(email_to)}, cc={";".join(email_cc)}'
-        )
+        logger.error(f"Recipients: to={';'.join(email_to)}, cc={';'.join(email_cc)}")
         raise error
     else:
-        logger.info(
-            f'Email sent to: {";".join(email_to)}, cc: {";".join(email_cc)}'
-        )
+        logger.info(f"Email sent to: {';'.join(email_to)}, cc: {';'.join(email_cc)}")
         if response.status_code != HTTPStatus.ACCEPTED:
             logger.error(f"Response code: {response.status_code}")
             logger.error(f"Response headers: {response.headers}")
@@ -143,9 +137,7 @@ def render_contact_form():
         email_to = st.text_input(
             label="Send To",
             value="support@acme.com",
-            disabled=not check_access(
-                st.session_state.username, "full_menu", "show"
-            ),
+            disabled=not check_access(st.session_state.username, "full_menu", "show"),
         )
 
         contact_name = st.text_input(
@@ -183,9 +175,7 @@ Content:
                         )
                         st.stop()
 
-                    st.toast(
-                        "Thank you for your message, but Email is not implemented"
-                    )
+                    st.toast("Thank you for your message, but Email is not implemented")
                     # st.balloons()
 
             else:

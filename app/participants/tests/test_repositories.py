@@ -274,9 +274,7 @@ def test_pati_exists() -> None:
         exists = repo.exists("name", "POITSCHKKA02", ParticipantType.HUMAN)
         assert exists == "ACTIVE"
 
-        exists = repo.exists(
-            "display_name", "Poitschke, Kai2", ParticipantType.HUMAN
-        )
+        exists = repo.exists("display_name", "Poitschke, Kai2", ParticipantType.HUMAN)
         assert exists == "ACTIVE"
 
         not_exists = repo.exists("id", -1, ParticipantType.HUMAN)
@@ -285,9 +283,7 @@ def test_pati_exists() -> None:
         not_exists = repo.exists("name", "ladkjflaskfm", ParticipantType.HUMAN)
         assert not_exists is False
 
-        not_exists = repo.exists(
-            "display_name", "ladkjflaskfm", ParticipantType.HUMAN
-        )
+        not_exists = repo.exists("display_name", "ladkjflaskfm", ParticipantType.HUMAN)
         assert not_exists is False
         repo.rollback()
 
@@ -420,7 +416,6 @@ def test_pati_repository_add_role() -> None:
 
 
 def test_pati_repository_get_with_rel() -> None:
-
     with ParticipantRepository(session=get_session(engine)) as repo:
         user_create = ParticipantCreate(
             name="USER-1",
@@ -507,9 +502,7 @@ def test_pati_repository_get_with_rel() -> None:
         assert rel_record.relation_type == ParticipantRelationType.PROXY_OF
         assert rel_record.created_by == "UNITTEST"
 
-        pati = repo.get_by_id(
-            user.id, include_relations=True, include_proxies=True
-        )
+        pati = repo.get_by_id(user.id, include_relations=True, include_proxies=True)
         assert pati is not None
         assert pati.name == "USER-1"
         assert len(pati.roles) == 1
@@ -520,7 +513,6 @@ def test_pati_repository_get_with_rel() -> None:
 
 
 def test_pati_model_add_relation_role() -> None:
-
     with ParticipantRepository(session=get_session(engine)) as repo:
         user_create = ParticipantCreate(
             name="user1",
@@ -555,16 +547,13 @@ def test_pati_model_add_relation_role() -> None:
             assert rel1[0].participant.id == role.id
             assert rel1[0].participant.name == role.name.upper()
             assert rel1[0].participant.display_name == role.display_name
-            assert (
-                rel1[0].participant.participant_type == role.participant_type
-            )
+            assert rel1[0].participant.participant_type == role.participant_type
             assert rel1[0].participant.state == "ACTIVE"
 
         repo.rollback()
 
 
 def test_pati_model_add_relation_org() -> None:
-
     with ParticipantRepository(session=get_session(engine)) as repo:
         user_create = ParticipantCreate(
             name="user1o",
@@ -583,7 +572,6 @@ def test_pati_model_add_relation_org() -> None:
         org: Participant = repo.create(org_create)
 
         with ParticipantRelationRepository(repo.session) as rel_repo:
-
             rel = repo.add_relation(
                 user,
                 org.id,
@@ -605,16 +593,13 @@ def test_pati_model_add_relation_org() -> None:
             repo.add_relation(
                 user,
                 org.id,
-                cast(
-                    ParticipantRelationType, "invalid"
-                ),  # cast to make mypy happy
+                cast(ParticipantRelationType, "invalid"),  # cast to make mypy happy
                 created_by="user2",
             )
         repo.rollback()
 
 
 def test_pati_model_add_reverse_relation_org() -> None:
-
     with ParticipantRepository(session=get_session(engine)) as repo:
         user_create = ParticipantCreate(
             name="user1p",
@@ -633,7 +618,6 @@ def test_pati_model_add_reverse_relation_org() -> None:
         org: Participant = repo.create(org_create)
 
         with ParticipantRelationRepository(repo.session) as rel_repo:
-
             rel = repo.add_reverse_relation(
                 org,
                 user.id,
@@ -655,9 +639,7 @@ def test_pati_model_add_reverse_relation_org() -> None:
             repo.add_reverse_relation(
                 org,
                 user.id,
-                cast(
-                    ParticipantRelationType, "invalid"
-                ),  # cast to make mypy happy
+                cast(ParticipantRelationType, "invalid"),  # cast to make mypy happy
                 created_by="user2",
             )
         repo.rollback()
@@ -690,11 +672,11 @@ def test_pati_model_delete_relation() -> None:
         org: Participant = repo.create(org_create)
 
         # Grant Role to user
-        rel1 = repo.add_relation(
+        _ = repo.add_relation(
             user, role.id, ParticipantRelationType.GRANT, created_by="user1"
         )
         # Make user member of
-        rel2 = repo.add_relation(
+        _ = repo.add_relation(
             user, org.id, ParticipantRelationType.MEMBER_OF, created_by="user2"
         )
         repo.delete_relation(user, role.id, ParticipantRelationType.GRANT)
@@ -734,11 +716,11 @@ def test_pati_model_delete_all_relations() -> None:
         org: Participant = repo.create(org_create)
 
         # Grant Role to user
-        rel1 = repo.add_relation(
+        _ = repo.add_relation(
             user, role.id, ParticipantRelationType.GRANT, created_by="user1"
         )
         # Make user member of
-        rel2 = repo.add_relation(
+        _ = repo.add_relation(
             user, org.id, ParticipantRelationType.MEMBER_OF, created_by="user2"
         )
         repo.delete_all_participant_relations(user.id)
@@ -768,13 +750,11 @@ def test_pati_model_delete_reverse_relation() -> None:
         role: Participant = repo.create(role_create)
 
         # Grant Role to user
-        rel1 = repo.add_relation(
+        _ = repo.add_relation(
             user, role.id, ParticipantRelationType.GRANT, created_by="user1"
         )
 
-        rel2 = repo.delete_reverse_relation(
-            role, user.id, ParticipantRelationType.GRANT
-        )
+        _ = repo.delete_reverse_relation(role, user.id, ParticipantRelationType.GRANT)
 
         repo.rollback()
 
@@ -891,7 +871,6 @@ def test_pati_activate() -> None:
 
 def test_pati_relation_repository_create() -> None:
     with ParticipantRepository(session=get_session(engine)) as repo:
-
         user_create = ParticipantCreate(
             name="user1r",
             display_name="User, 1r",
@@ -924,9 +903,7 @@ def test_pati_relation_repository_create() -> None:
             assert rel1[0].participant.id == role.id
             assert rel1[0].participant.name == role.name.upper()
             assert rel1[0].participant.display_name == role.display_name
-            assert (
-                rel1[0].participant.participant_type == role.participant_type
-            )
+            assert rel1[0].participant.participant_type == role.participant_type
             assert rel1[0].participant.state == "ACTIVE"
 
             # Creating it a 2nd time should return 0
@@ -938,7 +915,6 @@ def test_pati_relation_repository_create() -> None:
 
 def test_pati_relation_repository_exists() -> None:
     with ParticipantRepository(session=get_session(engine)) as repo:
-
         user_create = ParticipantCreate(
             name="user1x",
             display_name="User, 1x",
@@ -988,7 +964,6 @@ def test_pati_relation_repository_exists() -> None:
 
 
 def test_pati_model_get_reverse_relation() -> None:
-
     with ParticipantRepository(session=get_session(engine)) as repo:
         user_create = ParticipantCreate(
             name="user1grr",
@@ -1007,7 +982,6 @@ def test_pati_model_get_reverse_relation() -> None:
         org: Participant = repo.create(org_create)
 
         with ParticipantRelationRepository(repo.session) as rel_repo:
-
             rel = repo.add_relation(
                 user,
                 org.id,
@@ -1023,9 +997,7 @@ def test_pati_model_get_reverse_relation() -> None:
             assert rel2[0].participant.id == user.id
             assert rel2[0].participant.name == user.name.upper()
             assert rel2[0].participant.display_name == user.display_name
-            assert (
-                rel2[0].participant.participant_type == user.participant_type
-            )
+            assert rel2[0].participant.participant_type == user.participant_type
             assert rel2[0].participant.state == "ACTIVE"
 
         repo.rollback()

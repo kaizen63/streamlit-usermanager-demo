@@ -116,9 +116,7 @@ def render_main_menu() -> None:
         orientation="horizontal",
         default_index=index,
         key="application_menu",
-        manual_select=(
-            0 if menu_selection and menu_selection not in options else None
-        ),
+        manual_select=(0 if menu_selection and menu_selection not in options else None),
         on_change=application_menu_callback,
     )
 

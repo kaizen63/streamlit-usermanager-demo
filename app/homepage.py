@@ -38,15 +38,9 @@ def get_participants_data() -> pd.DataFrame | None:
     """Returns the participants table data"""
 
     with ParticipantRepository(get_db()) as repo:
-        humans: list[Participant] = repo.get_all(
-            "HUMAN", include_relations=False
-        )
-        org_units: list[Participant] = repo.get_all(
-            "ORG_UNIT", include_relations=False
-        )
-        roles: list[Participant] = repo.get_all(
-            "ROLE", include_relations=False
-        )
+        humans: list[Participant] = repo.get_all("HUMAN", include_relations=False)
+        org_units: list[Participant] = repo.get_all("ORG_UNIT", include_relations=False)
+        roles: list[Participant] = repo.get_all("ROLE", include_relations=False)
         all_participants: list[Participant] = humans + org_units + roles
 
     data = [
@@ -110,17 +104,13 @@ def render_participants_table(title: str):
         df = render_sort_menu(df, key_prefix="homepage_pati_sort")
         st.write(f"[{count}]")
 
-    displayed_df, page_size = paginate_df(
-        df, key_prefix="homepage_pati_paginate"
-    )
+    displayed_df, page_size = paginate_df(df, key_prefix="homepage_pati_paginate")
 
     pagination = st.container(height=None)
     height = calculate_height(df, page_size)
 
     column_config: dict[str, Any] = {
-        ParticipantsTableHeader.ID: st.column_config.NumberColumn(
-            format="%4f"
-        ),
+        ParticipantsTableHeader.ID: st.column_config.NumberColumn(format="%4f"),
     }
 
     pagination.dataframe(
