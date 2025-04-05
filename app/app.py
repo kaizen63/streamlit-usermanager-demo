@@ -284,7 +284,7 @@ def configure_main_page() -> None:
     """Configures the main page. Must be the first call to streamlit"""
     # Page icons: https://www.webfx.com/tools/emoji-cheat-sheet/
     # https://streamlit-emoji-shortcodes-streamlit-app-gwckff.streamlit.app/
-    page_icon: str = ":robot:"
+    page_icon: str = ":material/robot:"
     layout: LayoutType = "wide"
     page_title: str = "Streamlit UserManager Demo"
     st.set_page_config(
