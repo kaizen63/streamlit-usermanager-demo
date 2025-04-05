@@ -49,7 +49,7 @@ def get_session(engine: Engine) -> Session:
 
 
 def delete_test_data():
-    global engine
+
     with get_session(engine) as session:
         if is_sqlite(engine):
             statement = delete(ParticipantRelationModel)
@@ -72,7 +72,7 @@ def delete_test_data():
 
 @pytest.fixture(autouse=True, scope="module")
 def setup_module() -> None:
-    global engine
+
     if is_sqlite(engine):
         create_db_and_tables(engine)
     # delete leftovers from prev tests, if any
@@ -80,7 +80,6 @@ def setup_module() -> None:
 
 
 def create_test_data(session: Session):
-    global engine
 
     system2 = ParticipantModel(
         name="SYSTEM2",
@@ -192,7 +191,7 @@ def create_test_data(session: Session):
 
 
 def test_pati_repository_get_by_name() -> None:
-    global engine
+
     with ParticipantRepository(get_session(engine)) as repository:
         create_test_data(repository.session)
         system: Optional[Participant] = repository.get_by_name(
@@ -258,7 +257,7 @@ def test_pati_repository_get_by_id_not_found() -> None:
 
 
 def test_pati_exists() -> None:
-    global engine
+
     with ParticipantRepository(session=get_session(engine)) as repo:
         create_test_data(repo.session)
         system: Optional[Participant] = repo.get_by_name(
