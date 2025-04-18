@@ -1,15 +1,21 @@
-FROM python:3.12
-# Install Microsoft sqlserver odbc
-# See: https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16&tabs=debian18-install%2Calpine17-install%2Cdebian8-install%2Credhat7-13-install%2Crhel7-offline
-#RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-#    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+FROM python:3.12-slim-bookworm
+# Update package lists and install required tools
+RUN apt-get -y update && \
+    apt-get -y install --no-install-recommends \
+    curl \
+    gnupg \
+    apt-transport-https \
+    net-tools \
+    tini && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Add Microsoft package repository and install ODBC 18
+# https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16&tabs=debian18-install%2Calpine17-install%2Cdebian8-install%2Credhat7-13-install%2Crhel7-offline
+#RUN OS_VERSION=$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2 | cut -d '.' -f 1) && \
+#    curl -sSL -O https://packages.microsoft.com/config/debian/${OS_VERSION}/packages-microsoft-prod.deb && \
+#    dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb && \
 #    apt-get update -y && \
-#    ACCEPT_EULA=Y apt-get install -y msodbcsql18 procps net-tools tini
-RUN apt-get update -y && apt-get install -y tini
-
-# Remove after testing
-#RUN apt-get install -y vim
-#RUN alias ll='ls -l'
+#    ACCEPT_EULA=Y apt-get install --no-install-recommends -y msodbcsql18 procps net-tools tini && \
+#    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
 # https://docs.python.org/3/using/cmdline.html#envvar-PYTHONDONTWRITEBYTECODE
@@ -20,17 +26,25 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # without being first buffered and that you can see the output of your application (e.g. django logs)
 # in real time. Equivalent to python -u: https://docs.python.org/3/using/cmdline.html#cmdoption-u
 ENV PYTHONUNBUFFERED=1
-
-# Install uv
-RUN python3 -m pip install --upgrade pip && pip install uv
 ENV PIP_DEFAULT_TIMEOUT=100
 
+# Install uv
+ADD https://astral.sh/uv/install.sh /install.sh
+RUN chmod -R 755 /install.sh && /install.sh && rm /install.sh
+
+ENV PATH=/root/.local/bin:$PATH
+
 WORKDIR /app
+RUN useradd --no-create-home appuser && chown -R appuser:appuser /app
+
 COPY ./pyproject.toml .
 RUN uv pip install -r pyproject.toml --system
 
 # Now copy the app
-COPY ./app .
+USER appuser
+# Now copy the app
+COPY --chown=appuser:appuser ./app .
+
 RUN cat <<____HERE > .streamlit/secrets.toml
 
 [ldap]
@@ -68,9 +82,6 @@ RUN chmod +x run.sh \
     && mkdir logs \
     && mkdir -p .rsa \
     && python3 generateKeys.py && chmod 0600 .rsa/authkey
-
-RUN useradd --create-home appuser && chown -R appuser:appuser .
-USER appuser
 
 ENV PYTHONPATH=/app
 ENV PYTHONFAULTHANDLER=1
