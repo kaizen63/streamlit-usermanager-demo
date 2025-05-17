@@ -20,6 +20,7 @@ lint:
 
 docker:
 	docker compose --file docker-compose.yml --progress=plain build
+	docker image ls | grep stusermanagerdemo
 
 tests:
 	DB_ENGINE="sqlite" DB_DATABASE=":memory:" uv run pytest
@@ -37,3 +38,5 @@ clean:
 update:
 	@echo "Updating..."
 	uv sync -U
+	@echo "Show latest available version of each package..."
+	uv tree --depth 1 --outdated
