@@ -87,8 +87,7 @@ chmod +x run.sh \
 && rm -f uv.lock \
 && rm -rf logs \
 && mkdir logs \
-&& mkdir -p .rsa \
-&& python3 generateKeys.py && chmod 0600 .rsa/authkey
+&& mkdir -p .rsa
 EOF
 ENV PYTHONPATH=/app
 ENV PYTHONFAULTHANDLER=1

@@ -94,6 +94,7 @@ def check_role_exists(
 ) -> bool:
     """
     Checks if the role exists by name or display name, whether active or terminated.
+
     Returns True if the user already exists, False otherwise.
     """
     return check_pati_exists(pati_repo, ParticipantType.ROLE, name, display_name)

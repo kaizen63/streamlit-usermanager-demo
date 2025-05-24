@@ -409,7 +409,7 @@ def test_pati_model_create(
 
 
 @pytest.mark.parametrize(
-    "name, expected_result",
+    ("name", "expected_result"),
     [
         (None, False),
         ("", False),

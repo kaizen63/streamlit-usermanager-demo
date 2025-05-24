@@ -1,4 +1,4 @@
-"""Functions called by other modules"""
+"""Common functions called by other modules."""
 
 import logging
 from collections.abc import Iterable
@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Optional
 
 import casbin
-from casbin.rbac import RoleManager
 import streamlit as st
+from casbin.rbac import RoleManager
 from config import settings
 from streamlit_ldap_authenticator import UserInfos
 
@@ -64,7 +64,7 @@ class MissingStateVariableError(Exception):
         self.message: str = f"Missing session state variable {missing}."
 
 
-def dequote(s) -> str:
+def dequote(s: str) -> str:
     """
     If a string has single or double quotes around it, remove them.
 
@@ -183,9 +183,9 @@ def filter_list(
     ]
 
 
-def safe_index[
-    T
-](iterable: Iterable[T], item: T, default: int | None = None) -> int | None:
+def safe_index[T](
+    iterable: Iterable[T], item: T, default: int | None = None
+) -> int | None:
     return next((i for i, x in enumerate(iterable) if x == item), default)
 
 

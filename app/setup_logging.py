@@ -71,10 +71,12 @@ def setup_logging(
             config = yaml.safe_load(f)
         logging.config.dictConfig(config)
     except (yaml.YAMLError, OSError) as e:
-        logging.error(f"Failed to process YAML file {file_path}: {e}")
+        logging.error(f"Failed to process YAML file {file_path}: {e}")  # noqa: LOG015
         logging.basicConfig(level=default_level)
     except Exception as e:
-        logging.error(f"Failed to set up logging with config {file_path}: {e}")
+        logging.error(  # noqa: LOG015
+            f"Failed to set up logging with config {file_path}: {e}"
+        )
         logging.basicConfig(level=default_level)
 
     if log_in_utc:

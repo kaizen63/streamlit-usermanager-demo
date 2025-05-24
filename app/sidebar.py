@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import streamlit as st
 from common import (
@@ -21,7 +21,7 @@ from streamlit_rsa_auth_ui import SignoutEvent
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def role_checkbox_callback(role, key) -> None:
+def role_checkbox_callback(role: str, key: str) -> None:
     # logger.debug(f"Callback: {role=}, {key=}")
     if key not in st.session_state:
         return
@@ -46,7 +46,7 @@ def render_user_roles(
     st.write(title)
     if "PUBLIC" in all_roles:
         all_roles.remove("PUBLIC")
-    for i, role in enumerate(all_roles):
+    for _i, role in enumerate(all_roles):
         key = f"sidebar_roles_{role}"
         value = role in users_effective_roles
         st.checkbox(
@@ -92,9 +92,7 @@ def render_sidebar(auth: Authenticate) -> None:
         # Use a new policy enforcer, so the files are read again. We need to know
         # when a policy has changed. e.g. when the SUPERADMIN is granted and revoked
         if is_administrator(current_user.username):
-            user_roles: list[str] = sorted(
-                list(get_all_roles_of_roles(current_user.roles))
-            )
+            user_roles: list[str] = sorted(get_all_roles_of_roles(current_user.roles))
             effective_roles = current_user.effective_roles
 
             render_user_roles("Your roles:", user_roles, effective_roles)

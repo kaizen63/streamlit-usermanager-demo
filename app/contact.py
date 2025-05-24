@@ -99,7 +99,7 @@ def send_email(
         attachments = []
 
     for attachment in attachments:
-        with open(attachment.file_path, "rb") as f:
+        with attachment.file_path.open("rb") as f:
             data = f.read()
             file_name = pathlib.Path(attachment.file_path).name
 
@@ -169,7 +169,7 @@ Content:
 ===
 {message}
 ===
-"""
+"""  # noqa: F841
                     api_key = settings.SENDGRID_API_KEY
                     if api_key is None:
                         st.error(

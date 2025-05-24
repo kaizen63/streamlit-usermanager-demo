@@ -22,7 +22,7 @@ from app.participants import (
     ParticipantUpdate,
 )
 
-from ..models import ParticipantModel, ParticipantRelationModel
+from ..models import ParticipantModel, ParticipantRelationModel  # noqa: TID252
 from .db import create_db_and_tables, create_db_engine, get_url, is_sqlite
 
 db_engine: str = os.getenv("DB_ENGINE")
@@ -43,6 +43,8 @@ def get_session_generator(engine: Engine) -> Generator[Session]:
 
 def get_session(engine: Engine) -> Session:
     """
+    Get the database session.
+
     To be used with:
     with get_session(engine) as session:
      ...
@@ -233,7 +235,7 @@ def test_pati_repository_get_by_name() -> None:
 def test_pati_repository_get_by_name_exc() -> None:
     with (
         ParticipantRepository(get_session(engine)) as repository,
-        pytest.raises(ValueError),
+        pytest.raises(ValueError),  # noqa: PT011
     ):
         _ = repository.get_by_name(
             name="ADMINISTRATOR2", participant_type="TOTALLY WRONG"
@@ -289,13 +291,13 @@ def test_pati_exists() -> None:
 def test_pati_exists_exceptions() -> None:
     with (
         ParticipantRepository(session=get_session(engine)) as repo,
-        pytest.raises(ValueError),
+        pytest.raises(ValueError),  # noqa: PT011
     ):
         _ = repo.exists("not_a_valid_column", 1, ParticipantType.SYSTEM)
 
 
 @pytest.mark.parametrize(
-    "name, display_name, participant_type, created_by, expected_result",
+    ("name", "display_name", "participant_type", "created_by", "expected_result"),
     [
         (
             "test-user",
@@ -593,7 +595,7 @@ def test_pati_model_add_relation_org() -> None:
             assert rel2[0].participant.participant_type == org.participant_type
             assert rel2[0].participant.state == "ACTIVE"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: PT011
             repo.add_relation(
                 user,
                 org.id,
@@ -639,7 +641,7 @@ def test_pati_model_add_reverse_relation_org() -> None:
             assert rel2[0].participant.participant_type == org.participant_type
             assert rel2[0].participant.state == "ACTIVE"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: PT011
             repo.add_reverse_relation(
                 org,
                 user.id,

@@ -26,10 +26,7 @@ def get_url(db_engine: str | None = None) -> str:
         db_engine = os.getenv("DB_ENGINE")
 
     db_server = urllib.parse.quote_plus(os.getenv("DB_SERVER", ""))
-    if port_s := os.getenv("DB_PORT"):
-        db_port = int(port_s)
-    else:
-        db_port = None
+    db_port = int(port_s) if (port_s := os.getenv("DB_PORT")) else None
 
     db_username = urllib.parse.quote_plus(os.getenv("DB_USERNAME", ""))
     db_password = urllib.parse.quote_plus(os.getenv("DB_PASSWORD", ""))
@@ -139,7 +136,7 @@ def get_session_generator(engine: Engine) -> Generator[Session]:
 
 def get_session(engine: Engine) -> Session:
     """
-    get the db session.
+    Get the db session.
 
     To be used with:
     with get_session(engine) as session:
@@ -163,8 +160,10 @@ def is_sqlite(engine: Engine) -> bool:
 
 
 def inject_sa_column_kwargs(
-    model: Any, column_name: str, sa_column_kwargs: dict
-) -> None:  # noqa: ANN401
+    model: Any,  # noqa: ANN401
+    column_name: str,
+    sa_column_kwargs: dict[str, Any],
+) -> None:
     # Get the table object from SQLAlchemy metadata
     table = model.__table__
 
@@ -201,7 +200,7 @@ def create_db_engine(
     db_schema: str | None = None,
     echo: bool = False,
     **kwargs: Any,  # noqa: ANN401
-) -> Any:
+) -> Any:  # noqa: ANN401
     """
     Creates a db engine for the url.
 

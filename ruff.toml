@@ -33,7 +33,7 @@ exclude = [
 # Assume Python 3.13
 target-version = "py313"
 
-fix = false
+fix = true
 indent-width = 4
 line-length = 88
 
@@ -127,6 +127,9 @@ ignore = [
     "BLE001", #Do not catch blind exception: Exception
     "B904", # Within an `except` clause, raise exceptions with `raise ... from err` or
     "UP040", #Type alias `LabelVisibilityType` uses `TypeAlias` annotation instead of the `type` keyword
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "EM101", # Exception must not use a string literal, assign to variable first
+    "EM102", # Exception must not use an f-string literal, assign to variable first
 ]
 
 [lint.per-file-ignores]

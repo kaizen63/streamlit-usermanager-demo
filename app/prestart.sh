@@ -6,3 +6,4 @@ if [ -f ./.streamlit/config."${ENV:-dev}".toml ]; then
   echo "Copy ./.streamlit/config."${ENV:-dev}".toml to ./.streamlit/config.toml"
   cp ./.streamlit/config."${ENV:-dev}".toml ./.streamlit/config.toml
 fi
+python generate_keys.py && chmod 0600 .rsa/authkey

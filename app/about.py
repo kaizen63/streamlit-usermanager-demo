@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 from __init__ import __maintainer__, __title__, __version__
 from contact import render_contact_form
@@ -14,6 +16,9 @@ def render_about() -> None:
     )
     st.write(f"Maintainer: {__maintainer__}")
 
-    with st.container(height=800), open("CHANGELOG.md", encoding="utf-8") as f:
+    with (
+        st.container(height=800),
+        Path("CHANGELOG.md").open("r", encoding="utf-8") as f,
+    ):
         changelog = f.read()
         st.write(changelog, unsafe_allow_html=True)

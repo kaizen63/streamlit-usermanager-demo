@@ -38,7 +38,7 @@ from .participant_relation import (
 
 logger = logging.getLogger("participants")
 
-KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]  # noqa: UP040
+KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]
 
 
 class ParticipantNotFoundError(Exception):

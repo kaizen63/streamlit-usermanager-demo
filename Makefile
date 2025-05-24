@@ -30,7 +30,7 @@ coverage:
 # Clean up flake8 cache and temporary files
 clean:
 	@echo "Cleaning up..."
-	rm -rf .flake8
+	rm -rf .ruff_cache
 
 update:
 	@echo "Updating..."

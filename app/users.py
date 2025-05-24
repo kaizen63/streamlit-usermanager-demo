@@ -188,6 +188,7 @@ def add_relations(
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
+
     """
     if not related_participant_ids:
         return
@@ -223,6 +224,7 @@ def add_reverse_relations(
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
+
     """
     if not related_participant_ids:
         return
@@ -258,6 +260,7 @@ def delete_relations(
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
+
     """
     if not related_participant_ids:
         return
@@ -292,6 +295,7 @@ def delete_reverse_relations(
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
+
     """
     if not related_participant_ids:
         return
