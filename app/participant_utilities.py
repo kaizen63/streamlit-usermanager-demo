@@ -1,7 +1,8 @@
 """Interface to participants"""
 
 import logging
-from typing import Callable, Literal, TypeAlias
+from collections.abc import Callable
+from typing import Literal, TypeAlias
 
 import streamlit as st
 from codetiming import Timer
@@ -103,7 +104,6 @@ def get_participant(
     pati_id: int, include_relations: bool = True, include_proxies: bool = True
 ) -> Participant | None:
     """Get a participant by its id. Can be of all types of participants"""
-
     with ParticipantRepository(get_db()) as pati_repo:
         participant: Participant | None = pati_repo.get_by_id(
             pati_id,
@@ -162,7 +162,8 @@ def get_participant_by_display_name(
 
 
 def get_user_display_name(name: str | None) -> str | None:
-    """Returns the display_name for a participant name. Returns the input if the
+    """
+    Returns the display_name for a participant name. Returns the input if the
     participant is not in the table.
     """
     if not name:
@@ -206,8 +207,10 @@ def check_pati_exists(
     name: str,
     display_name: str,
 ) -> bool:
-    """Checks if the participant exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise."""
+    """
+    Checks if the participant exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise.
+    """
 
     def pati_exists(field: str, value: str) -> bool:
         exists = pati_repo.exists(field, value, participant_type)

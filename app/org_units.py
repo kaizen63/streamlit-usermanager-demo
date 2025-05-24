@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 from common import get_policy_enforcer, safe_index
@@ -166,7 +166,7 @@ def save_role_changes(
     )
 
 
-def render_org_units_selectbox() -> Optional[Participant]:
+def render_org_units_selectbox() -> Participant | None:
     """Renders the Org Units selectbox. Shows the Org Units display names"""
     show_only_active = st.toggle(label="Show only active", value=True)
     all_org_units = get_org_units(only_active=show_only_active, include_relations=False)
@@ -191,9 +191,8 @@ def render_org_units_selectbox() -> Optional[Participant]:
             include_proxies=False,
         ):
             return selected_org_unit
-        else:
-            st.error(f"Selected org_unit not found. {selected} ")
-            st.stop()
+        st.error(f"Selected org_unit not found. {selected} ")
+        st.stop()
 
     return None
 
@@ -201,8 +200,10 @@ def render_org_units_selectbox() -> Optional[Participant]:
 def check_org_unit_exists(
     pati_repo: ParticipantRepository, name: str, display_name: str
 ) -> bool:
-    """Checks if the user exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise."""
+    """
+    Checks if the user exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise.
+    """
     return check_pati_exists(pati_repo, ParticipantType.ORG_UNIT, name, display_name)
 
 
@@ -217,35 +218,34 @@ def render_create_org_unit_form(title: str) -> None:
         if not display_name or not org_unit_name:
             st.error("Please fill in all fields")
             return
-        else:
-            if not is_valid_name(org_unit_name.strip()):
-                st.error(
-                    "Invalid name. It must be at least 2 characters long, start with a letter, "
-                    "and may include numbers, underscores and hyphens."
+        if not is_valid_name(org_unit_name.strip()):
+            st.error(
+                "Invalid name. It must be at least 2 characters long, start with a letter, "
+                "and may include numbers, underscores and hyphens."
+            )
+            st.stop()
+
+        org_unit_name = org_unit_name.upper()
+        with ParticipantRepository(get_db()) as pati_repo:
+            if check_org_unit_exists(pati_repo, org_unit_name, display_name):
+                return
+            try:
+                create = ParticipantCreate(
+                    name=org_unit_name,
+                    display_name=display_name,
+                    description=description,
+                    created_by=st.session_state.username,
+                    participant_type=ParticipantType.ORG_UNIT,
                 )
-                st.stop()
+                _ = pati_repo.create(create)
 
-            org_unit_name = org_unit_name.upper()
-            with ParticipantRepository(get_db()) as pati_repo:
-                if check_org_unit_exists(pati_repo, org_unit_name, display_name):
-                    return
-                try:
-                    create = ParticipantCreate(
-                        name=org_unit_name,
-                        display_name=display_name,
-                        description=description,
-                        created_by=st.session_state.username,
-                        participant_type=ParticipantType.ORG_UNIT,
-                    )
-                    _ = pati_repo.create(create)
-
-                    # Now add him to the session state.
-                except Exception as e:
-                    logger.exception(f"Org Unit creation failed: {e}")
-                    st.error("Oops that went wrong")
-                    pati_repo.rollback()
-                else:
-                    finalize_org_unit_creation(pati_repo, org_unit_name)
+                # Now add him to the session state.
+            except Exception as e:
+                logger.exception(f"Org Unit creation failed: {e}")
+                st.error("Oops that went wrong")
+                pati_repo.rollback()
+            else:
+                finalize_org_unit_creation(pati_repo, org_unit_name)
 
     # noinspection PyShadowingNames
     def finalize_org_unit_creation(
@@ -287,7 +287,6 @@ def save_org_changes(
     changes: dict[str, Any],
 ) -> None:
     """Saves the Org Unit changes"""
-
     changes["updated_by"] = (
         st.session_state.username if "updated_by" not in changes else None
     )
@@ -330,15 +329,14 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
             save_org_changes(pati_repo, selected_org_unit, org_changes)
             time.sleep(1)
             st.rerun()
+        elif not roles_changed:
+            st.info("No changes to save")
         else:
-            if not roles_changed:
-                st.info("No changes to save")
-            else:
-                # Only roles got changed
-                pati_repo.commit()
-                get_org_units.clear()
-                st.success(f"Org Unit {selected_org_unit.display_name} saved")
-                st.rerun()
+            # Only roles got changed
+            pati_repo.commit()
+            get_org_units.clear()
+            st.success(f"Org Unit {selected_org_unit.display_name} saved")
+            st.rerun()
 
     def process_form_submission() -> None:
         if len(display_name) == 0:

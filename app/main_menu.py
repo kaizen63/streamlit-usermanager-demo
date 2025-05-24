@@ -66,7 +66,6 @@ def generate_menu_items(
     permissions: dict[str, bool],
 ) -> tuple[tuple[str], tuple[str]]:
     """Generate menu options and corresponding icons based on permissions."""
-
     home_label = get_home_label()
 
     menu_items = [
@@ -82,7 +81,7 @@ def generate_menu_items(
     # options = [item[0] for item in menu_items if item]
     # icons = [item[1] for item in menu_items if item]
     # return options, icons
-    options, icons = zip(*[item for item in menu_items if item])
+    options, icons = zip(*[item for item in menu_items if item], strict=False)
     return tuple(options), tuple(icons)
 
 

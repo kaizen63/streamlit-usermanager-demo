@@ -1,5 +1,6 @@
 import os
-from typing import Generator, Literal, Optional, cast
+from collections.abc import Generator
+from typing import Literal, cast
 
 # import os
 import pytest
@@ -30,7 +31,7 @@ db_url = get_url(db_engine)
 engine: Engine = create_db_engine(db_url)
 
 
-def get_session_generator(engine: Engine) -> Generator[Session, None, None]:
+def get_session_generator(engine: Engine) -> Generator[Session]:
     session = Session(bind=engine)
     try:
         _ = session.connection()
@@ -41,7 +42,8 @@ def get_session_generator(engine: Engine) -> Generator[Session, None, None]:
 
 
 def get_session(engine: Engine) -> Session:
-    """to be used with:
+    """
+    To be used with:
     with get_session(engine) as session:
      ...
     """
@@ -194,14 +196,14 @@ def test_pati_repository_get_by_name() -> None:
 
     with ParticipantRepository(get_session(engine)) as repository:
         create_test_data(repository.session)
-        system: Optional[Participant] = repository.get_by_name(
+        system: Participant | None = repository.get_by_name(
             name="SYSTEM2", participant_type=ParticipantType.SYSTEM
         )
         assert system is not None
         assert system.name == "SYSTEM2"
         assert system.participant_type == "SYSTEM"
 
-        administrator: Optional[Participant] = repository.get_by_name(
+        administrator: Participant | None = repository.get_by_name(
             name="ADMINISTRATOR2", participant_type=ParticipantType.ROLE
         )
         assert administrator is not None
@@ -209,7 +211,7 @@ def test_pati_repository_get_by_name() -> None:
         assert administrator.name == "ADMINISTRATOR2"
         assert administrator.participant_type == "ROLE"
 
-        role_public: Optional[Participant] = repository.get_by_name(
+        role_public: Participant | None = repository.get_by_name(
             name="EDITOR", participant_type=ParticipantType.ROLE
         )
         assert role_public is not None
@@ -217,7 +219,7 @@ def test_pati_repository_get_by_name() -> None:
         assert role_public.name == "EDITOR"
         assert role_public.participant_type == "ROLE"
 
-        user_1: Optional[Participant] = repository.get_by_name(
+        user_1: Participant | None = repository.get_by_name(
             name="POITSCHKKA02",
             participant_type=ParticipantType.HUMAN,
             include_relations=True,
@@ -242,7 +244,7 @@ def test_pati_repository_get_by_name_exc() -> None:
 
 def test_pati_repository_get_by_name_not_found() -> None:
     with ParticipantRepository(session=get_session(engine)) as repository:
-        result: Optional[Participant] = repository.get_by_name(
+        result: Participant | None = repository.get_by_name(
             name="KAI",
             participant_type=ParticipantType.HUMAN,
             raise_error_if_not_found=False,
@@ -252,7 +254,7 @@ def test_pati_repository_get_by_name_not_found() -> None:
 
 def test_pati_repository_get_by_id_not_found() -> None:
     with ParticipantRepository(session=get_session(engine)) as repository:
-        result: Optional[Participant] = repository.get_by_id(-1)
+        result: Participant | None = repository.get_by_id(-1)
         assert result is None
 
 
@@ -260,7 +262,7 @@ def test_pati_exists() -> None:
 
     with ParticipantRepository(session=get_session(engine)) as repo:
         create_test_data(repo.session)
-        system: Optional[Participant] = repo.get_by_name(
+        system: Participant | None = repo.get_by_name(
             name="SYSTEM2", participant_type=ParticipantType.SYSTEM
         )
         assert system is not None
@@ -592,7 +594,7 @@ def test_pati_model_add_relation_org() -> None:
             repo.add_relation(
                 user,
                 org.id,
-                cast(ParticipantRelationType, "invalid"),  # cast to make mypy happy
+                cast("ParticipantRelationType", "invalid"),  # cast to make mypy happy
                 created_by="user2",
             )
         repo.rollback()
@@ -638,7 +640,7 @@ def test_pati_model_add_reverse_relation_org() -> None:
             repo.add_reverse_relation(
                 org,
                 user.id,
-                cast(ParticipantRelationType, "invalid"),  # cast to make mypy happy
+                cast("ParticipantRelationType", "invalid"),  # cast to make mypy happy
                 created_by="user2",
             )
         repo.rollback()
@@ -778,12 +780,12 @@ def test_pati_repository_set_state() -> None:
             new_state = "ACTIVE"
 
         repo.set_participant_state(pati, new_state)
-        updated_pati: Optional[Participant] = repo.get_by_id(pati.id)
+        updated_pati: Participant | None = repo.get_by_id(pati.id)
         assert updated_pati is not None
         assert updated_pati.state == new_state
 
         repo.set_participant_state(pati, orig_state)
-        updated_pati2: Optional[Participant] = repo.get_by_id(pati.id)
+        updated_pati2: Participant | None = repo.get_by_id(pati.id)
         assert updated_pati2 is not None
         assert updated_pati2.state == orig_state
 
@@ -810,7 +812,7 @@ def test_pati_repository_update() -> None:
             new_state = "ACTIVE"
         update = ParticipantUpdate(state=new_state, updated_by="UNITTEST8")
 
-        updated_pati: Optional[Participant] = repo.update(-1, update)
+        updated_pati: Participant | None = repo.update(-1, update)
         assert updated_pati is None
 
         updated_pati = repo.update(pati.id, update)

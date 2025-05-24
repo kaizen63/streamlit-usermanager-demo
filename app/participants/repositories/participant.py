@@ -1,16 +1,22 @@
 """
 Repositories for participants
+
+This module provides repository classes to handle participant management operations
+including CRUD operations, relation management, and state transitions.
+It serves as the data access layer for participant-related functionality.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Literal, Optional, TypeAlias, cast
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
 
 from pydantic import ValidationError
-from sqlalchemy import Select
+
+if TYPE_CHECKING:
+    from sqlalchemy import Select
 from sqlmodel import Session, delete, or_, select, update
 
-from ..models import (
+from ..models import (  # noqa: TID252
     Participant,
     ParticipantCreate,
     ParticipantModel,
@@ -32,17 +38,20 @@ from .participant_relation import (
 
 logger = logging.getLogger("participants")
 
-KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]
+KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]  # noqa: UP040
 
 
 class ParticipantNotFoundError(Exception):
     """Raised when a participant is not found."""
 
-    pass
-
 
 class ParticipantRepository(RepositoryBase):
-    """The repository for participants"""
+    """
+    The repository for participants
+
+    Handles operations for creating, retrieving, updating, and managing
+    participants and their relationships in the system.
+    """
 
     def __init__(
         self,
@@ -58,32 +67,60 @@ class ParticipantRepository(RepositoryBase):
         include_relations: bool = False,
         include_proxies: bool = False,
         raise_error_if_not_found: bool = False,
-    ) -> Optional[Participant]:
-        """Get a participant by name and type.
-        include_proxies is only relevant if include_relations is True
-        Returns None if not found."""
+    ) -> Participant | None:
+        """
+        Get a participant by name and type.
+
+        Retrieves a participant from the database based on the provided name and
+        participant type. Optionally includes related entities and can raise an
+        error if the participant is not found.
+
+        Args:
+            name: The unique name of the participant to retrieve (case-sensitive)
+            participant_type: The type of participant (HUMAN, ROLE, ORG_UNIT, SYSTEM)
+            include_relations: Whether to include related participants (roles, org_units, proxy_of).
+                Defaults to False.
+            include_proxies: Whether to include participants that have this participant
+                as a proxy. Only relevant if include_relations is True. Defaults to False.
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The found participant object, or None if not found and
+            raise_error_if_not_found is False.
+
+        Raises:
+            ValueError: If the participant_type is invalid
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        """
         if participant_type not in [str(m) for m in ParticipantType]:
-            raise ValueError("Wrong participant_type: {participant_type}")
+            exc_msg = f"Wrong participant_type: {participant_type}"
+            raise ValueError(exc_msg)
         try:
             result: ParticipantModel | None = self.session.exec(
                 select(ParticipantModel).where(
                     ParticipantModel.name == name,
                     ParticipantModel.participant_type == participant_type,
-                )
+                ),
             ).one_or_none()
         except Exception as e:
             logger.exception(f"get_by_name: {participant_type=}, {name=} - {e}")
             raise
+        else:
+            if result is None:
+                if raise_error_if_not_found:
+                    raise ParticipantNotFoundError
+                return None
 
-        if result is None:
-            if raise_error_if_not_found:
-                raise ParticipantNotFoundError
-            return None
-
-        pati = Participant(**result.model_dump())
-        if include_relations:
-            self.set_relations(pati, include_proxies)
-        return pati
+            pati = Participant(**result.model_dump())
+            if include_relations:
+                self.set_relations(pati, include_proxies)
+            return pati
+        finally:
+            pass
 
     def get_by_display_name(
         self,
@@ -93,22 +130,48 @@ class ParticipantRepository(RepositoryBase):
         include_relations: bool = False,
         include_proxies: bool = False,
         raise_error_if_not_found: bool = False,
-    ) -> Optional[Participant]:
-        """Get a participant by display_name and type.
-        include_proxies is only relevant if include_relations is True
-        Returns None if not found."""
+    ) -> Participant | None:
+        """
+        Get a participant by display_name and type.
+
+        Retrieves a participant from the database based on the provided display_name and
+        participant type. Optionally includes related entities and can raise an
+        error if the participant is not found.
+
+        Args:
+            display_name: The display name of the participant to retrieve
+            participant_type: The type of participant (HUMAN, ROLE, ORG_UNIT, SYSTEM)
+            include_relations: Whether to include related participants (roles, org_units, proxy_of).
+                Defaults to False.
+            include_proxies: Whether to include participants that have this participant
+                as a proxy. Only relevant if include_relations is True. Defaults to False.
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The found participant object, or None if not found and
+            raise_error_if_not_found is False.
+
+        Raises:
+            ValueError: If the participant_type is invalid
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        """
         if participant_type not in [str(m) for m in ParticipantType]:
-            raise ValueError("Wrong participant_type: {participant_type}")
+            exc_msg = f"Wrong participant_type: {participant_type}"
+            raise ValueError(exc_msg)
         try:
             result: ParticipantModel | None = self.session.exec(
                 select(ParticipantModel).where(
                     ParticipantModel.display_name == display_name,
                     ParticipantModel.participant_type == participant_type,
-                )
+                ),
             ).one_or_none()
         except Exception as e:
             logger.exception(
-                f"get_by_display_name: {participant_type=}, {display_name=} - {e}"
+                f"get_by_display_name: {participant_type=}, {display_name=} - {e}",
             )
             raise
         else:
@@ -131,12 +194,35 @@ class ParticipantRepository(RepositoryBase):
         include_relations: bool = False,
         include_proxies: bool = False,
         raise_error_if_not_found: bool = False,
-    ) -> Optional[Participant]:
-        """Get a participant by id
-        Returns None if not found."""
+    ) -> Participant | None:
+        """
+        Get a participant by id.
+
+        Retrieves a participant from the database based on the provided id.
+        Optionally includes related entities and can raise an error if the
+        participant is not found.
+
+        Args:
+            id_: The unique id of the participant to retrieve
+            include_relations: Whether to include related participants. Defaults to False.
+            include_proxies: Whether to include proxies. Only relevant if
+                include_relations is True. Defaults to False.
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The found participant object, or None if not found and
+            raise_error_if_not_found is False.
+
+        Raises:
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        """
         try:
             result: ParticipantModel | None = self.session.exec(
-                select(ParticipantModel).where(ParticipantModel.id == id_)
+                select(ParticipantModel).where(ParticipantModel.id == id_),
             ).one_or_none()
         except Exception as e:
             logger.exception(f"get_by_id: {id=} - {e}")
@@ -157,22 +243,35 @@ class ParticipantRepository(RepositoryBase):
         value: int | str,
         participant_type: ParticipantType,
     ) -> bool | str:
-        """query if the participant exists. All AK fields are possible.
+        """
+        Query if the participant exists based on a key column.
+
+        Checks if a participant exists in the database using the specified key column
+        and value, along with the participant type.
+
+        Args:
+            column: The column to search by (id, name, or display_name)
+            value: The value to search for (int for id, str for name/display_name)
+            participant_type: The type of participant (HUMAN, ROLE, ORG_UNIT, SYSTEM)
+
         Returns:
-            False if the participant does not exists
-            The state (ACTIVE or TERMINATED) if the user exists
+            bool | str: False if the participant does not exist, or
+                the state (ACTIVE or TERMINATED) if the participant exists
+
+        Raises:
+            ValueError: If an invalid column or participant_type is provided
+
         """
         if participant_type not in ParticipantType.__members__.values():
-            raise ValueError("Wrong participant_type: {participant_type}")
+            exc_msg = f"Wrong participant_type: {participant_type}"
+            raise ValueError(exc_msg)
 
-        column = column.lower()
-        if column not in set(KeyColumnLiteral.__args__):
-            raise ValueError(
-                f"Wrong column {column!a} provided. Allowed values are: id, name, display_name"
-            )
+        if column not in set(get_args(KeyColumnLiteral)):
+            exc_msg = f"Wrong column {column!a} provided. Allowed values are: {get_args(KeyColumnLiteral)}"
+            raise ValueError(exc_msg)
 
         # Define column to lookup method mapping
-        lookup_methods = {
+        lookup_methods: dict[str, Any] = {
             "name": self.get_by_name,
             "id": self.get_by_id,
             "display_name": self.get_by_display_name,
@@ -191,7 +290,9 @@ class ParticipantRepository(RepositoryBase):
                 pati = lookup_methods[column](value, raise_error_if_not_found=False)
             else:
                 pati = lookup_methods[column](
-                    value, participant_type, raise_error_if_not_found=False
+                    value,
+                    participant_type,
+                    raise_error_if_not_found=False,
                 )
 
             return str(pati.state) if pati else False
@@ -205,11 +306,31 @@ class ParticipantRepository(RepositoryBase):
         include_relations: bool = False,
         only_active: bool = False,
     ) -> list[Participant]:
-        """Get all participants of a type
-        Returns [] if not found."""
+        """
+        Get all participants of a specified type.
+
+        Retrieves all participants of the specified type from the database.
+        Optionally filters to include only active participants and can
+        include related entities.
+
+        Args:
+            participant_type: The type of participants to retrieve
+            include_relations: Whether to include related participants for each
+                participant. Defaults to False.
+            only_active: Whether to include only active participants. Defaults to False.
+
+        Returns:
+            list[Participant]: A list of participant objects matching the criteria,
+                or an empty list if none found.
+
+        Raises:
+            ValueError: If the participant_type is invalid
+            Exception: For any database errors
+
+        """
         if participant_type not in [str(m) for m in ParticipantType]:
-            raise ValueError("Wrong participant_type: {participant_type}")
-        #
+            exc_msg = f"Wrong participant_type: {participant_type}"
+            raise ValueError(exc_msg)
         try:
             if only_active:
                 statement: Select = (
@@ -219,13 +340,13 @@ class ParticipantRepository(RepositoryBase):
                         or_(
                             ParticipantModel.state.is_(None),
                             ParticipantModel.state == "ACTIVE",
-                        )
+                        ),
                     )
                     .order_by(ParticipantModel.display_name)
                 )
             else:
                 statement = select(ParticipantModel).where(
-                    ParticipantModel.participant_type == participant_type
+                    ParticipantModel.participant_type == participant_type,
                 )
 
             result: list[ParticipantModel] = self.session.exec(statement).all()
@@ -240,15 +361,24 @@ class ParticipantRepository(RepositoryBase):
             return participants
 
     def set_relations(
-        self, participant: Participant, set_proxies: bool = False
+        self,
+        participant: Participant,
+        set_proxies: bool = False,
     ) -> Participant:
-        """Adds all relationships for a participant from the database to the object
+        """
+        Adds all relationships for a participant from the database to the object.
+
+        Retrieves and adds role, org_unit, and proxy relationships to a participant
+        object from the database.
 
         Args:
             participant: The participant to add the relations roles, org_units, proxy_of and proxies
             set_proxies: Whether to add proxies of this user or not. Defaults to False
 
-        Returns: The passed participant"""
+        Returns:
+            Participant: The passed participant with relations populated
+
+        """
         with ParticipantRelationRepository(self.session) as rel_repository:
             relations: list[RelatedParticipant] = rel_repository.get(participant.id)
             if not relations:
@@ -273,36 +403,54 @@ class ParticipantRepository(RepositoryBase):
                     case _:
                         pass
 
-            if set_proxies is True:
-                proxies: list[RelatedParticipant] = rel_repository.get_reverse(
-                    participant.id, ("PROXY OF",)
-                )
-                if not proxies:
-                    return participant
-                participant.proxies = participant.proxies = [
-                    r.participant
-                    for r in proxies
-                    if r.participant.state == ParticipantState.ACTIVE.value
-                ]
+            if set_proxies is False:
+                return participant
+
+            proxies: list[RelatedParticipant] = rel_repository.get_reverse(
+                participant.id,
+                ("PROXY OF",),
+            )
+            if not proxies:
+                return participant
+            participant.proxies = participant.proxies = [
+                r.participant
+                for r in proxies
+                if r.participant.state == ParticipantState.ACTIVE.value
+            ]
 
         return participant
 
     def compute_effective_roles(self, participant: Participant) -> set[str]:
-        """Computes effective roles for this participant based on the assigned roles, the roles assigned to the
-        related ORGs or PROXYs.
-        We go only one level deep into an org_unit or a proxy
+        """
+        Computes effective roles for a participant.
+
+        Determines the combined set of roles for a participant based on directly
+        assigned roles, roles assigned to their organization units, and roles
+        assigned to participants they are a proxy for.
+
+        Args:
+            participant: The participant to compute effective roles for
+
+        Returns:
+            set[str]: A set of role names that are effectively granted to the participant
+
+        Notes:
+            - Only goes one level deep into org_units or proxies
+            - Updates the participant's effective_roles attribute
+
         """
         # Collect  roles assigned to this participant
         # we start with a list and turn it into a set at the end
         logger.debug(
             f"Participant: {participant.name}, num_roles: {len(participant.roles)}, "
-            + f"num_orgs: {len(participant.org_units)}, num_proxy_of: {len(participant.proxy_of)}"
+            f"num_orgs: {len(participant.org_units)}, num_proxy_of: {len(participant.proxy_of)}",
         )
         effective_roles: set[str] = {role.name for role in participant.roles}
         with ParticipantRelationRepository(self.session) as rel_repository:
-            # Helper function to get roles for a list of participants
+
             def get_granted_roles(participants: list[Participant]) -> set[str]:
-                roles = set()
+                """Helper function to get the roles of a participant"""
+                roles: set[str] = set()
                 for pati in participants:
                     relations = rel_repository.get(pati.id, relation_type=("GRANT",))
                     if relations:
@@ -319,57 +467,115 @@ class ParticipantRepository(RepositoryBase):
     def set_participant_state(
         self,
         participant: Participant,
-        state: Optional[ParticipantStateLiteral],
+        state: ParticipantStateLiteral | None,
         raise_error_if_not_found: bool = False,
     ) -> Participant:
-        """Sets the status of the participant to the state
-        Status of SYSTEM user cannot be terminated.
+        """
+        Sets the status of the participant to the specified state.
+
+        Updates the participant's state in the database. Cannot change the
+        state of the SYSTEM user.
+
+        Args:
+            participant: The participant to update
+            state: The new state to set (ACTIVE, TERMINATED, or None)
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The updated participant object
+
+        Raises:
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        Notes:
+            - SYSTEM user's state cannot be modified
+
         """
         if participant.name == "SYSTEM":
             return participant
 
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             result = self.session.exec(
                 update(ParticipantModel)
                 .where(ParticipantModel.id == participant.id)
-                .values(state=state, updated_timestamp=now)
+                .values(state=state, updated_timestamp=now),
             )
             self.session.flush()
         except Exception as e:
             logger.exception(
-                f"Failed to update state of {participant.id} to {state} - {e}"
+                f"Failed to update state of {participant.id} to {state} - {e}",
             )
             raise
         else:
             if result.rowcount == 1:
                 participant.state = state
-            else:
-                if raise_error_if_not_found:
-                    raise ParticipantNotFoundError
+            elif raise_error_if_not_found:
+                raise ParticipantNotFoundError
             return participant
 
     def terminate_participant(
-        self, participant: Participant, raise_error_if_not_found: bool = False
+        self,
+        participant: Participant,
+        raise_error_if_not_found: bool = False,
     ) -> Participant:
-        """Sets the status of the participant to TERMINATED. Cannot be done for SYSTEM user"""
+        """
+        Sets the status of the participant to TERMINATED.
+
+        Convenience method to terminate a participant. Cannot terminate the SYSTEM user.
+
+        Args:
+            participant: The participant to terminate
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The updated participant object
+
+        Raises:
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+
+        """
         if participant.name == "SYSTEM":
             return participant
         return self.set_participant_state(
             participant,
-            ParticipantState.TERMINATED.value,
+            "TERMINATED",
             raise_error_if_not_found,
         )
 
     def activate_participant(
-        self, participant: Participant, raise_error_if_not_found: bool = False
+        self,
+        participant: Participant,
+        raise_error_if_not_found: bool = False,
     ) -> Participant:
-        """Sets the status of the participant to ACTIVE. Cannot be done for SYSTEM user"""
+        """
+        Sets the status of the participant to ACTIVE.
+
+        Convenience method to activate a participant. Cannot modify the SYSTEM user.
+
+        Args:
+            participant: The participant to activate
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant: The updated participant object
+
+        Raises:
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+
+        """
         if participant.name == "SYSTEM":
             return participant
         return self.set_participant_state(
             participant,
-            ParticipantState.ACTIVE.value,
+            "ACTIVE",
             raise_error_if_not_found,
         )
 
@@ -380,50 +586,90 @@ class ParticipantRepository(RepositoryBase):
         *,
         raise_error_if_not_found: bool = False,
     ) -> Participant | None:
-        """Updates all None fields in the database. Make sure the object is created with all values"""
+        """
+        Updates participant fields in the database.
+
+        Updates a participant's information in the database based on the provided
+        ParticipantUpdate object.
+
+        Args:
+            id_: The ID of the participant to update
+            pati_update: The update data object containing fields to update
+            raise_error_if_not_found: Whether to raise ParticipantNotFoundError if the
+                participant doesn't exist. Defaults to False.
+
+        Returns:
+            Participant | None: The updated participant object, or None if not found and
+                raise_error_if_not_found is False
+
+        Raises:
+            ParticipantNotFoundError: If the participant doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        Notes:
+            - Only fields that are explicitly set in pati_update will be updated
+            - The updated_timestamp is automatically set to current time if not provided
+
+        """
         # exclude_unset delivers only the fields present at creation time, not the ones
         # modified afterward. We use these to get the ones initialized with None,
         # which will be updated to NULL.
         modified_fields = pati_update.model_dump(
-            exclude_unset=True
+            exclude_unset=True,
         )  # was exclude_unset=True, exclude defaults gives us the updated_timestamp
         if "updated_timestamp" not in modified_fields:
             modified_fields["updated_timestamp"] = (
-                pati_update.updated_timestamp or datetime.now(timezone.utc)
+                pati_update.updated_timestamp or datetime.now(UTC)
             )
 
         try:
             pati = self.session.exec(
-                select(ParticipantModel).where(ParticipantModel.id == id_)
+                select(ParticipantModel).where(ParticipantModel.id == id_),
             ).one_or_none()
             if pati is None:
                 if raise_error_if_not_found:
-                    raise ParticipantNotFoundError
-                else:
-                    return None
+                    raise ParticipantNotFoundError  # noqa: TRY301
+                return None
 
             result = self.session.exec(
-                (
-                    update(ParticipantModel)
-                    .where(ParticipantModel.id == id_)
-                    .values(**modified_fields)
-                )
+                update(ParticipantModel)
+                .where(ParticipantModel.id == id_)
+                .values(**modified_fields),
             )
 
         except Exception as e:
             logger.exception(f"Error updating metadata. Error: {e}")
-            raise e
+            raise
         else:
             if result.rowcount == 0:
                 if raise_error_if_not_found:
                     raise ParticipantNotFoundError
-                else:
-                    return None
+                return None
             self.session.refresh(pati)
             return Participant(**pati.model_dump())
 
     def create(self, create: ParticipantCreate) -> Participant:
-        """Creates a new participant and returns the Participant model with the id"""
+        """
+        Creates a new participant.
+
+        Creates a new participant in the database based on the provided
+        ParticipantCreate object.
+
+        Args:
+            create: The ParticipantCreate object containing the data for the new participant
+
+        Returns:
+            Participant: The newly created participant with ID
+
+        Raises:
+            ValidationError: If the created participant fails validation
+            Exception: For any database errors
+
+        Notes:
+            - The name is automatically converted to uppercase
+
+        """
         create.name = create.name.upper()
         model = ParticipantModel(**create.model_dump())
         try:
@@ -439,9 +685,8 @@ class ParticipantRepository(RepositoryBase):
             except ValidationError as e:
                 logger.exception(f"Validation error {e}")
                 raise
-            return pati
-        finally:
-            pass
+            else:
+                return pati
 
     def add_user(
         self,
@@ -454,11 +699,33 @@ class ParticipantRepository(RepositoryBase):
         external_reference: str | None = None,
         hashed_password: str | None = None,
     ) -> Participant:
-        """Creates a new user
-        Returns the new users object"""
+        """
+        Creates a new human participant.
+
+        Convenience method to create a new human participant (user) with
+        the specified attributes.
+
+        Args:
+            name: The unique name for the user (will be converted to uppercase)
+            display_name: The display name for the user
+            created_by: The name of the user creating this participant
+            email: Optional email address for the user
+            description: Optional description of the user
+            external_reference: Optional external reference ID
+            hashed_password: Optional hashed password for authentication
+
+        Returns:
+            Participant: The newly created participant
+
+        Raises:
+            ValueError: If mandatory fields are missing
+            Exception: For any database errors
+
+        """
         for f in [name, display_name, created_by]:
             if f is None:
-                raise ValueError(f"add_user: Missing mandatory field: {f}")
+                exc_msg = f"add_user: Missing mandatory field: {f}"
+                raise ValueError(exc_msg)
 
         create = ParticipantCreate(
             name=name,
@@ -485,11 +752,30 @@ class ParticipantRepository(RepositoryBase):
         created_by: str,
         description: str | None = None,
     ) -> Participant:
-        """Creates a new role
-        Returns the new roles object"""
+        """
+        Creates a new role participant.
+
+        Convenience method to create a new role participant with
+        the specified attributes.
+
+        Args:
+            name: The unique name for the role (will be converted to uppercase)
+            display_name: The display name for the role
+            created_by: The name of the user creating this role
+            description: Optional description of the role
+
+        Returns:
+            Participant: The newly created role participant
+
+        Raises:
+            ValueError: If mandatory fields are missing
+            Exception: For any database errors
+
+        """
         for f in [name, display_name, created_by]:
             if f is None:
-                raise ValueError(f"add_user: Missing mandatory field: {f}")
+                exc_msg = f"add_user: Missing mandatory field: {f}"
+                raise ValueError(exc_msg)
 
         create = ParticipantCreate(
             name=name,
@@ -515,11 +801,32 @@ class ParticipantRepository(RepositoryBase):
         description: str | None = None,
         external_reference: str | None = None,
     ) -> Participant:
-        """Creates a new org
-        Returns the new orgs object"""
+        """
+        Creates a new organizational unit participant.
+
+        Convenience method to create a new organizational unit participant with
+        the specified attributes.
+
+        Args:
+            name: The unique name for the org unit (will be converted to uppercase)
+            display_name: The display name for the org unit
+            created_by: The name of the user creating this org unit
+            email: Optional email address for the org unit
+            description: Optional description of the org unit
+            external_reference: Optional external reference ID
+
+        Returns:
+            Participant: The newly created org unit participant
+
+        Raises:
+            ValueError: If mandatory fields are missing
+            Exception: For any database errors
+
+        """
         for f in [name, display_name, created_by]:
             if f is None:
-                raise ValueError(f"add_user: Missing mandatory field: {f}")
+                exc_msg = f"add_user: Missing mandatory field: {f}"
+                raise ValueError(exc_msg)
 
         create = ParticipantCreate(
             name=name,
@@ -544,8 +851,21 @@ class ParticipantRepository(RepositoryBase):
         relation_type: ParticipantRelationType,
         created_by: str,
     ) -> ParticipantRelation:
-        """Adds a relation to another participant
-        Returns the number of affected rows: 0 or 1
+        """
+        Adds a relation from one participant to another.
+
+        Creates a relationship between the given participant (as source)
+        and another participant identified by pati2_id (as target).
+
+        Args:
+            participant: The source participant for the relation
+            pati2_id: The ID of the target participant for the relation
+            relation_type: The type of relation to create
+            created_by: The name of the user creating this relation
+
+        Returns:
+            ParticipantRelation: The created relationship
+
         """
         with ParticipantRelationRepository(self.session) as rel_repo:
             create = ParticipantRelationCreate(
@@ -555,8 +875,8 @@ class ParticipantRepository(RepositoryBase):
                 created_by=created_by,
             )
             if create.created_timestamp is None:
-                create.created_timestamp = datetime.now(timezone.utc)
-            return cast(ParticipantRelation, rel_repo.create(create, True))
+                create.created_timestamp = datetime.now(UTC)
+            return cast("ParticipantRelation", rel_repo.create(create, True))
 
     def add_reverse_relation(
         self,
@@ -565,8 +885,21 @@ class ParticipantRepository(RepositoryBase):
         relation_type: ParticipantRelationType,
         created_by: str,
     ) -> ParticipantRelation:
-        """Adds a relation to this participant
-        Returns the number of created rows: 0 or 1
+        """
+        Adds a relation to this participant from another participant.
+
+        Creates a relationship to the given participant (as target)
+        from another participant identified by pati1_id (as source).
+
+        Args:
+            participant: The target participant for the relation
+            pati1_id: The ID of the source participant for the relation
+            relation_type: The type of relation to create
+            created_by: The name of the user creating this relation
+
+        Returns:
+            ParticipantRelation: The created relationship
+
         """
         with ParticipantRelationRepository(self.session) as rel_repo:
             create = ParticipantRelationCreate(
@@ -576,8 +909,8 @@ class ParticipantRepository(RepositoryBase):
                 created_by=created_by,
             )
             if create.created_timestamp is None:
-                create.created_timestamp = datetime.now(timezone.utc)
-            return cast(ParticipantRelation, rel_repo.create(create, True))
+                create.created_timestamp = datetime.now(UTC)
+            return cast("ParticipantRelation", rel_repo.create(create, True))
 
     def delete_relation(
         self,
@@ -586,12 +919,32 @@ class ParticipantRepository(RepositoryBase):
         relation_type: ParticipantRelationType,
         raise_error_if_not_found: bool = False,
     ) -> None:
-        """Deletes a relation to another participant.
+        """
+        Deletes a relation from a source participant to a target participant.
 
-        Returns the number of affected rows ( 1 or 0)
+        Removes a relationship where the given participant is the source (pati1)
+        and another participant identified by pati2_id is the target (pati2).
+
+        Args:
+            participant: The source participant of the relation to delete
+            pati2_id: The ID of the target participant in the relation
+            relation_type: The type of relation to delete (GRANT, MEMBER OF, PROXY OF)
+            raise_error_if_not_found: Whether to raise an error if the relation
+                doesn't exist. Defaults to False.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If the relation_type is invalid
+            ParticipantRelationNotFoundError: If the relation doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
         """
         if relation_type not in [str(pt) for pt in ParticipantRelationType]:
-            raise ValueError(f"Wrong relation_type: {relation_type=}")
+            exc_msg = f"Wrong relation_type: {relation_type=}"
+            raise ValueError(exc_msg)
 
         try:
             result = self.session.exec(
@@ -599,12 +952,12 @@ class ParticipantRepository(RepositoryBase):
                     ParticipantRelationModel.pati1_id == participant.id,
                     ParticipantRelationModel.pati2_id == pati2_id,
                     ParticipantRelationModel.relation_type == relation_type,
-                )
+                ),
             )
             self.session.flush()
         except Exception as e:
             logger.exception(f"Error deleting relation of pati1 {participant.id=}: {e}")
-            raise e
+            raise
         else:
             if result.rowcount == 0 and raise_error_if_not_found:
                 raise ParticipantRelationNotFoundError
@@ -617,25 +970,47 @@ class ParticipantRepository(RepositoryBase):
         relation_type: ParticipantRelationType,
         raise_error_if_not_found: bool = False,
     ) -> int:
-        """Deletes a relation to this participant.
-        Returns the number of affected rows ( 1 or 0)"""
+        """
+        Deletes a relation where the given participant is the target.
+
+        Removes a relationship where the given participant is the target (pati2)
+        and another participant identified by pati1_id is the source (pati1).
+
+        Args:
+            participant: The target participant of the relation to delete
+            pati1_id: The ID of the source participant in the relation
+            relation_type: The type of relation to delete (GRANT, MEMBER OF, PROXY OF)
+            raise_error_if_not_found: Whether to raise an error if the relation
+                doesn't exist. Defaults to False.
+
+        Returns:
+            int: Number of affected rows (0 or 1)
+
+        Raises:
+            ValueError: If the relation_type is invalid
+            ParticipantRelationNotFoundError: If the relation doesn't exist and
+                raise_error_if_not_found is True
+            Exception: For any database errors
+
+        """
         if relation_type not in [str(pt) for pt in ParticipantRelationType]:
-            raise ValueError(f"Wrong relation_type: {relation_type=}")
+            exc_msg = f"Wrong relation_type: {relation_type=}"
+            raise ValueError(exc_msg)
         try:
             result = self.session.exec(
                 delete(ParticipantRelationModel).where(
                     ParticipantRelationModel.pati2_id == participant.id,
                     ParticipantRelationModel.pati1_id == pati1_id,
                     ParticipantRelationModel.relation_type == relation_type,
-                )
+                ),
             )
             self.session.flush()
 
         except Exception as e:
             logger.exception(
-                f"Error deleting reverse relation of pati2 {participant.id=}: {e}"
+                f"Error deleting reverse relation of pati2 {participant.id=}: {e}",
             )
-            raise e
+            raise
         else:
             if result.rowcount == 0 and raise_error_if_not_found:
                 raise ParticipantRelationNotFoundError
@@ -645,24 +1020,35 @@ class ParticipantRepository(RepositoryBase):
         self,
         participant_id: int,
     ) -> int:
-        """Deletes all relations of this participant
-        Returns the number of affected rows"""
+        """
+        Deletes all relations where the participant is either source or target.
+
+        Removes all relationships where the specified participant is either
+        the source (pati1) or target (pati2) of the relationship.
+
+        Args:
+            participant_id: The ID of the participant whose relations should be deleted
+
+        Returns:
+            int: Number of relations deleted
+
+        Raises:
+            Exception: For any database errors
+
+        """
         try:
             result = self.session.exec(
                 delete(ParticipantRelationModel).where(
                     or_(
                         ParticipantRelationModel.pati1_id == participant_id,
                         ParticipantRelationModel.pati2_id == participant_id,
-                    )
-                )
+                    ),
+                ),
             )
 
         except Exception as e:
             logger.exception(
-                f"Error deleting all relations of participant {participant_id=} {e}"
+                f"Error deleting all relations of participant {participant_id=} {e}",
             )
-            raise e
-        else:
-            return result.rowcount
-        finally:
-            pass
+            raise
+        return result.rowcount

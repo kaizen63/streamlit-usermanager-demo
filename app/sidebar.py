@@ -103,9 +103,8 @@ def render_sidebar(auth: Authenticate) -> None:
                 "Debug Menu", value=st.query_params.get("debug", "0") == "1"
             ):
                 st.query_params["debug"] = "1"
-            else:
-                if st.query_params.get("debug"):
-                    del st.query_params["debug"]
+            elif st.query_params.get("debug"):
+                del st.query_params["debug"]
 
             if is_administrator(st.session_state.username):
                 if st.button("Clear caches"):

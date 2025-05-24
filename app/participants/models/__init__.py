@@ -22,20 +22,20 @@ from .participant_relation import (
 from .participant_relations_v import ParticipantRelationsView
 
 __all__ = [
-    "ParticipantModel",
-    "ParticipantRelationModel",
     "Participant",
     "ParticipantCreate",
+    "ParticipantModel",
+    "ParticipantRelation",
+    "ParticipantRelationCreate",
+    "ParticipantRelationModel",
+    "ParticipantRelationType",
+    "ParticipantRelationTypeLiteral",
+    "ParticipantRelationsView",
     "ParticipantState",
     "ParticipantStateLiteral",
     "ParticipantType",
     "ParticipantTypeLiteral",
     "ParticipantUpdate",
-    "is_valid_name",
     "RelatedParticipant",
-    "ParticipantRelation",
-    "ParticipantRelationCreate",
-    "ParticipantRelationType",
-    "ParticipantRelationTypeLiteral",
-    "ParticipantRelationsView",
+    "is_valid_name",
 ]

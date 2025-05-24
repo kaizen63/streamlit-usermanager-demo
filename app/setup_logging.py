@@ -9,13 +9,12 @@ import logging.config
 import os
 import time
 from pathlib import Path
-from typing import Union, cast
+from typing import cast, override
 
 import streamlit as st
 
 # import coloredlogs
 import yaml
-from typing_extensions import override
 
 
 class LogLevelInvalidError(Exception):
@@ -37,7 +36,7 @@ def dequote(s: str | None) -> str | None:
 
 
 def setup_logging(
-    default_path: Union[str, Path] = "logging-conf.yaml",
+    default_path: str | Path = "logging-conf.yaml",
     default_level: int = logging.INFO,
     env_key: str = "LOGGING_CONFIG",
     log_in_utc: bool = True,
@@ -53,9 +52,10 @@ def setup_logging(
 
     Returns:
         None
+
     """
     file_path = (
-        Path(cast(str, dequote(os.getenv(env_key, str(default_path)))))
+        Path(cast("str", dequote(os.getenv(env_key, str(default_path)))))
         .expanduser()
         .resolve()
     )
@@ -67,7 +67,7 @@ def setup_logging(
         logging.basicConfig(level=default_level)
         return
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             config = yaml.safe_load(f)
         logging.config.dictConfig(config)
     except (yaml.YAMLError, OSError) as e:
@@ -80,7 +80,7 @@ def setup_logging(
     if log_in_utc:
         logging.Formatter.converter = time.gmtime
 
-    return None
+    return
 
 
 def get_level(level: str) -> int:
@@ -100,6 +100,7 @@ def set_log_level_from_env(
     Args:
         logger_name: Name of the logger to update.
         env_key: The environment variable holding the desired log level.
+
     """
     logger = logging.getLogger(logger_name)
 
@@ -152,12 +153,14 @@ class MyJSONFormatter(logging.Formatter):
     Custom formatter to format the log records as JSON.
     Is reading environment variables starting with LOGGER_ and adds them to the log but removing LOGGER_ and
     lower case the name.
+
     Examples:
         - LOGGER_APPLICATIONNAME
         - LOGGER_SERVICE
 
     See here: https://github.com/mCodingLLC/VideosSampleCode/tree/master/videos/135_modern_logging
     and here: https://www.youtube.com/watch?v=9L77QExPmI0
+
     """
 
     def __init__(
@@ -177,7 +180,7 @@ class MyJSONFormatter(logging.Formatter):
         log_data = {
             "message": record.getMessage(),
             "timestamp": dt.datetime.fromtimestamp(
-                record.created, tz=dt.timezone.utc
+                record.created, tz=dt.UTC
             ).isoformat(),
             "application_name": st.session_state.get("application_name", ""),
         }

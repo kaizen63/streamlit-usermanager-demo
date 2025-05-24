@@ -7,13 +7,13 @@ readme = "README.md"
 authors = [
     { name = "Kai Poitschke", email = "kai.poitschke@nielseniq.com" }
 ]
-requires-python = ">=3.12,<3.14"
+requires-python = "~=3.13.0"
 dependencies = [
-    "streamlit~=1.43",
+    "streamlit~=1.45.0",
     "python-dotenv>=1.0.1",
     "streamlit-ldap-authenticator~=0.2.5",
     "streamlit-extras~=0.5.0",
-    "pydantic[email]>=2.10",
+    "pydantic[email]>=2.10.0",
     "streamlit-option-menu>=0.4.0",
     "validate-email>=1.3",
     "codetiming>=1.4.0",
@@ -23,7 +23,7 @@ dependencies = [
     "sqlalchemy~=2.0.29",
     "pydantic-settings>=2.2.1",
     "streamlit-rsa-auth-ui>=1.1.1",
-    "pandas>=2.2.2",
+    "pandas~=2.2.0",
     "pyodbc>=5.2.0",
     "sqlmodel>=0.0.22",
     "humanfriendly>=10.0",
@@ -31,36 +31,14 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black",
-    "isort",
     "mypy",
     "pytest",
     "bump-my-version",
     "ruff",
     "coverage",
     "sqlalchemy2-stubs",
-    "flake8",
     "pandas-stubs",
 ]
-
-[tool.black]
-line-length = 88
-#skip-string-normalization = true
-target-version = ['py311', 'py312']
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-
-
-[tool.ruff]
-fix = true
-indent-width = 4
-line-length = 88
-
-[tool.ruff.format]
-line-ending = "native"
-quote-style = "double"
 
 
 [tool.mypy]

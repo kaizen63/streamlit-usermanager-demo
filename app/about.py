@@ -15,8 +15,7 @@ def render_about() -> None:
     st.write(f"Maintainer: {__maintainer__}")
 
     with st.container(height=800):
-        with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+        with open("CHANGELOG.md", encoding="utf-8") as f:
             changelog = f.read()
             st.write(changelog, unsafe_allow_html=True)
 
-    return
