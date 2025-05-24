@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import Any, Iterable, Literal, Optional, TypeAlias
+from collections.abc import Iterable
+from typing import Any, Literal, TypeAlias
 
 import streamlit as st
 from common import (
@@ -51,10 +52,11 @@ LayoutType: TypeAlias = Literal["centered", "wide"]
 def update_user_record(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> Participant:
-    """Compares user infos with db and updates the db if they are not equal.
+    """
+    Compares user infos with db and updates the db if they are not equal.
+
     Returns the (modified) participant
     """
-
     user_changes: dict[str, str | None] = {
         "display_name": (
             user["displayName"] if pati.display_name != user["displayName"] else None
@@ -75,13 +77,13 @@ def update_user_record(
         logger.exception(
             f"Cannot update userid: {pati.id=}, {pati.name=}, {pati.display_name=} {pati.participant_type=} {e=}"
         )
-        raise e
+        raise
 
     pati_repo.commit()
     return updated_participant if updated_participant else pati
 
 
-def add_roles_to_policy_enforcer(username, roles: Iterable[str]) -> None:
+def add_roles_to_policy_enforcer(username: str, roles: Iterable[str]) -> None:
     """Adds the (effective) roles to cabin"""
     enforcer = st.session_state["policy_enforcer"]
     if not enforcer:
@@ -94,7 +96,10 @@ def add_roles_to_policy_enforcer(username, roles: Iterable[str]) -> None:
 def update_user_session_state(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> None:
-    """Clears the cache and sets the following variables in st.session_state:
+    """
+    Clears the cache.
+
+    Sets the following variables in st.session_state:
     current_user
     username
     user_display_name
@@ -117,7 +122,7 @@ def update_user_session_state(
         current_user["roles"] = set()
 
     if pati.org_units:
-        current_user["org_units"] = set([ou.name for ou in pati.org_units])
+        current_user["org_units"] = {ou.name for ou in pati.org_units}
     st_current_user: CurrentUser = CurrentUser(**current_user)
     st_current_user.update_session_state()
     st.session_state["username"] = pati.name
@@ -126,8 +131,9 @@ def update_user_session_state(
     current_user["title"] = user.get("title") or "unknown"
 
 
-def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
-    """Validate if the AD user is our list of participants
+def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
+    """
+    Validate if the AD user is our list of participants
 
     UserInfos fields (from Active Directory):
     sAMAccountName : Username
@@ -185,15 +191,13 @@ def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
                 st_effective_roles,
             )
             return True
-        else:
-            # Not a user in the database. Check the job title
-            logger.debug(f"check_user: {username=} not known. Checking job title")
-            if user_is_manager(user):
-                initialize_manager_user(user, username)
-                return True
-            else:
-                clear_user_session()
-                return "You are not authorized to login"
+        # Not a user in the database. Check the job title
+        logger.debug(f"check_user: {username=} not known. Checking job title")
+        if user_is_manager(user):
+            initialize_manager_user(user, username)
+            return True
+        clear_user_session()
+        return "You are not authorized to login"
 
 
 def initialize_manager_user(user: UserInfos, username: str) -> None:
@@ -224,7 +228,7 @@ def clear_user_session() -> None:
     st.session_state["user_display_name"] = ""
 
 
-def render_login_screen(auth: Authenticate) -> dict[str, Any]:
+def render_login_screen(_auth: Authenticate) -> dict[str, Any]:
     # col1, col2, col3 = st.columns(3)
     # with col2:
     # The standard login function adds \\ in front of the username, becuse
@@ -235,7 +239,7 @@ def render_login_screen(auth: Authenticate) -> dict[str, Any]:
     #    config={"align": "center"},
     #    getLoginUserName=lambda u: u,
     # )
-    user: dict[str, Any] = dict()
+    user: dict[str, Any] = {}
     if not user:
         user = {
             "uid": "einstein",
@@ -253,7 +257,7 @@ def render_login_screen(auth: Authenticate) -> dict[str, Any]:
 def put_settings_into_session_state() -> None:
     """Puts settings and env into session state without showing the secrets"""
     s = settings.model_dump()
-    s["DB_PASSWORD"] = "*****"
+    s["DB_PASSWORD"] = "*****"  # noqa: S105
     s["settings"] = s
 
 
@@ -297,7 +301,6 @@ def configure_main_page() -> None:
 
 def get_authenticator() -> Authenticate:
     """Gets the Authenticator instance"""
-
     ldap_config = dict(st.secrets["ldap"])
     ldap_config["server_path"] = settings.LDAP_SERVER or dequote(
         st.secrets["ldap"]["server_path"]
@@ -322,7 +325,6 @@ def is_database_empty(engine: Engine) -> bool:
 
 def setup_database() -> None:
     """We create the tables in a sqlite database. Executed unless db_initialized is not present in st.session_state"""
-
     if not st.session_state.get("db_initialized"):
         db_name_env = os.getenv("DB_DATABASE")
         db_eng_env: str | None = os.getenv("DB_ENGINE")

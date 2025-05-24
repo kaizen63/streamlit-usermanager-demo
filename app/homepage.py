@@ -36,7 +36,6 @@ class ParticipantsTableHeader(StrEnum):
 
 def get_participants_data() -> pd.DataFrame | None:
     """Returns the participants table data"""
-
     with ParticipantRepository(get_db()) as repo:
         humans: list[Participant] = repo.get_all("HUMAN", include_relations=False)
         org_units: list[Participant] = repo.get_all("ORG_UNIT", include_relations=False)
@@ -83,7 +82,7 @@ def get_participants_data() -> pd.DataFrame | None:
     return df
 
 
-def render_participants_table(title: str):
+def render_participants_table(title: str) -> None:
     """Render the participants table"""
     st.write(title)
     df = get_participants_data()
@@ -135,7 +134,7 @@ def render_participants_table(title: str):
     )
 
 
-def render_homepage():
+def render_homepage() -> None:
     """Renders the homepage"""
     st.write("## Welcome to Streamlit UserManager Demo")
     render_participants_table("## Participants")

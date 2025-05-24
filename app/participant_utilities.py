@@ -1,7 +1,11 @@
 """Interface to participants"""
 
+from typing import TYPE_CHECKING
 import logging
-from typing import Callable, Literal, TypeAlias
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+from typing import Literal, TypeAlias
 
 import streamlit as st
 from codetiming import Timer
@@ -26,19 +30,21 @@ def get_users(
     include_relations: bool = False,
 ) -> list[Participant]:
     """Get a list of all users"""
-    with Timer(
-        name="get_users",
-        text=lambda sec: f"Get users from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
-        f"{format_timespan(sec)}",
-        logger=logger.debug,
+    with (
+        Timer(
+            name="get_users",
+            text=lambda sec: f"Get users from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
+            f"{format_timespan(sec)}",
+            logger=logger.debug,
+        ),
+        ParticipantRepository(get_db()) as pati_repo,
     ):
-        with ParticipantRepository(get_db()) as pati_repo:
-            users: list[Participant] = pati_repo.get_all(
-                ParticipantType.HUMAN,
-                include_relations=include_relations,
-                only_active=only_active,
-            )
-            return users
+        users: list[Participant] = pati_repo.get_all(
+            ParticipantType.HUMAN,
+            include_relations=include_relations,
+            only_active=only_active,
+        )
+        return users
 
 
 @st.cache_data(ttl=600, show_spinner="Loading roles...")
@@ -48,19 +54,21 @@ def get_roles(
     include_relations: bool = False,
 ) -> list[Participant]:
     """Get a list of all rolo"""
-    with Timer(
-        name="get_roles",
-        text=lambda sec: f"Get roles from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
-        f"{format_timespan(sec)}",
-        logger=logger.debug,
+    with (
+        Timer(
+            name="get_roles",
+            text=lambda sec: f"Get roles from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
+            f"{format_timespan(sec)}",
+            logger=logger.debug,
+        ),
+        ParticipantRepository(get_db()) as pati_repo,
     ):
-        with ParticipantRepository(get_db()) as pati_repo:
-            roles: list[Participant] = pati_repo.get_all(
-                ParticipantType.ROLE,
-                include_relations=include_relations,
-                only_active=only_active,
-            )
-            return roles
+        roles: list[Participant] = pati_repo.get_all(
+            ParticipantType.ROLE,
+            include_relations=include_relations,
+            only_active=only_active,
+        )
+        return roles
 
 
 @st.cache_data(ttl=600, show_spinner="Loading org_units...")
@@ -70,19 +78,21 @@ def get_org_units(
     include_relations: bool = False,
 ) -> list[Participant]:
     """Get a list of all org_units"""
-    with Timer(
-        name="get_org_units",
-        text=lambda sec: f"Get org_units from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
-        f"{format_timespan(sec)}s",
-        logger=logger.debug,
+    with (
+        Timer(
+            name="get_org_units",
+            text=lambda sec: f"Get org_units from database {only_active=} {include_relations=} - caller={who_called_me(6)}: "
+            f"{format_timespan(sec)}s",
+            logger=logger.debug,
+        ),
+        ParticipantRepository(get_db()) as pati_repo,
     ):
-        with ParticipantRepository(get_db()) as pati_repo:
-            roles: list[Participant] = pati_repo.get_all(
-                ParticipantType.ORG_UNIT,
-                include_relations=include_relations,
-                only_active=only_active,
-            )
-            return roles
+        roles: list[Participant] = pati_repo.get_all(
+            ParticipantType.ORG_UNIT,
+            include_relations=include_relations,
+            only_active=only_active,
+        )
+        return roles
 
 
 def get_lookup_by_display_name(
@@ -103,7 +113,6 @@ def get_participant(
     pati_id: int, include_relations: bool = True, include_proxies: bool = True
 ) -> Participant | None:
     """Get a participant by its id. Can be of all types of participants"""
-
     with ParticipantRepository(get_db()) as pati_repo:
         participant: Participant | None = pati_repo.get_by_id(
             pati_id,
@@ -162,7 +171,10 @@ def get_participant_by_display_name(
 
 
 def get_user_display_name(name: str | None) -> str | None:
-    """Returns the display_name for a participant name. Returns the input if the
+    """
+    Returns the display_name for a participant name.
+
+    Returns the input if the
     participant is not in the table.
     """
     if not name:
@@ -206,8 +218,11 @@ def check_pati_exists(
     name: str,
     display_name: str,
 ) -> bool:
-    """Checks if the participant exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise."""
+    """
+    Checks if the participant exists by name or display name, whether active or terminated.
+
+    Returns True if the user already exists, False otherwise.
+    """
 
     def pati_exists(field: str, value: str) -> bool:
         exists = pati_repo.exists(field, value, participant_type)

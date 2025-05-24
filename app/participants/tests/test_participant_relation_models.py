@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from ..models import (
+from ..models import (  # noqa: TID252
     ParticipantRelation,
     ParticipantRelationCreate,
     ParticipantRelationType,

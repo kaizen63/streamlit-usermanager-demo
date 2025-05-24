@@ -4,7 +4,7 @@ from contact import render_contact_form
 
 
 @st.dialog("Contact Us")
-def show_contact_form():
+def show_contact_form() -> None:
     render_contact_form()
 
 
@@ -14,9 +14,6 @@ def render_about() -> None:
     )
     st.write(f"Maintainer: {__maintainer__}")
 
-    with st.container(height=800):
-        with open("CHANGELOG.md", "r", encoding="utf-8") as f:
-            changelog = f.read()
-            st.write(changelog, unsafe_allow_html=True)
-
-    return
+    with st.container(height=800), open("CHANGELOG.md", encoding="utf-8") as f:
+        changelog = f.read()
+        st.write(changelog, unsafe_allow_html=True)

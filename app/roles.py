@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Optional
 
 import streamlit as st
 from common import check_access, get_policy_enforcer, safe_index
@@ -27,7 +26,7 @@ from participants import (
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def render_roles_selectbox() -> Optional[Participant]:
+def render_roles_selectbox() -> Participant | None:
     """Renders the roles select box"""
     show_only_active = st.toggle(label="Show only active", value=True)
     current_user = st.session_state.current_user["username"]
@@ -50,11 +49,10 @@ def render_roles_selectbox() -> Optional[Participant]:
             selected, ParticipantType.ROLE, include_relations=True
         ):
             return selected_role
-        else:
-            st.error(f"Selected role not found. {selected} ")
-            # Remove the user from the session_state.user_users
-            st.session_state.users_all_org_units.pop(selected)
-            st.stop()
+        st.error(f"Selected role not found. {selected} ")
+        # Remove the user from the session_state.user_users
+        st.session_state.users_all_org_units.pop(selected)
+        st.stop()
 
     return None
 
@@ -94,8 +92,10 @@ def render_participants_granted_this_role(
 def check_role_exists(
     pati_repo: ParticipantRepository, name: str, display_name: str
 ) -> bool:
-    """Checks if the role exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise."""
+    """
+    Checks if the role exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise.
+    """
     return check_pati_exists(pati_repo, ParticipantType.ROLE, name, display_name)
 
 

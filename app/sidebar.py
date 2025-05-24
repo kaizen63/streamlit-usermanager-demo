@@ -1,5 +1,5 @@
 import logging
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 import streamlit as st
 from common import (
@@ -11,7 +11,9 @@ from common import (
     is_administrator,
 )
 from config import settings
-from streamlit.connections import SQLConnection
+
+if TYPE_CHECKING:
+    from streamlit.connections import SQLConnection
 from streamlit_ldap_authenticator import Authenticate
 from streamlit_rsa_auth_ui import SignoutEvent
 
@@ -60,7 +62,7 @@ def render_user_roles(
 def render_sidebar(auth: Authenticate) -> None:
     """Render the sidebar"""
 
-    def render_logout_form(user: str):
+    def render_logout_form(user: str) -> None:
         """Renders the logout form"""
         (
             auth.createLogoutForm(
@@ -103,14 +105,14 @@ def render_sidebar(auth: Authenticate) -> None:
                 "Debug Menu", value=st.query_params.get("debug", "0") == "1"
             ):
                 st.query_params["debug"] = "1"
-            else:
-                if st.query_params.get("debug"):
-                    del st.query_params["debug"]
+            elif st.query_params.get("debug"):
+                del st.query_params["debug"]
 
-            if is_administrator(st.session_state.username):
-                if st.button("Clear caches"):
-                    logger.info("Clear caches was requested via user interface.")
-                    st.cache_data.clear()
+            if is_administrator(st.session_state.username) and st.button(
+                "Clear caches"
+            ):
+                logger.info("Clear caches was requested via user interface.")
+                st.cache_data.clear()
 
 
 def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
@@ -120,7 +122,7 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
         )
         st.session_state["username"] = ""
         st.session_state["user_display_name"] = ""
-        st.session_state["current_user"] = dict()
+        st.session_state["current_user"] = {}
         st.session_state["must_register"] = False
         st.session_state["policy_enforcer"] = None
 
@@ -130,6 +132,6 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
             st.session_state["db_connection"] = None
 
         st.cache_data.clear()
-        for key in st.session_state.keys():
+        for key in st.session_state:
             del st.session_state[key]
     return None  # return "cancel" on error

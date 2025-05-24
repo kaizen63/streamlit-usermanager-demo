@@ -4,7 +4,8 @@ import functools
 import logging
 import os
 import urllib
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import streamlit as st
 from config import settings
@@ -55,7 +56,6 @@ def create_connection(
     db_url: str, db_schema: str | None = None, echo: bool = False
 ) -> SQLConnection:
     """Creates a (cached) streamlit connection. With this call you have access to the engine and the session"""
-
     if db_schema is None:
         db_schema = os.getenv("DB_SCHEMA", None)
 
@@ -79,7 +79,7 @@ def create_connection(
     elif db_url.startswith("sqlite"):
         connect_args = {"check_same_thread": False}
     else:
-        connect_args = dict()
+        connect_args = {}
 
     logger.debug(f"Connecting to database: {db_url}. Caller={who_called_me(1)}")
     if use_setinputsizes is None:
@@ -107,7 +107,7 @@ def create_connection(
     return connection
 
 
-def get_db():
+def get_db() -> Session:
     """Returns the session object from the SQLConnection"""
     session = Session(bind=get_engine())
     try:
@@ -117,7 +117,7 @@ def get_db():
     return session
 
 
-def get_engine():
+def get_engine() -> Engine:
     """Returns the SQLAlchemy engine object from the SQLConnection"""
     if connection := st.session_state.get("db_connection"):
         return connection.engine
@@ -127,7 +127,7 @@ def get_engine():
     return connection.engine
 
 
-def get_session_generator(engine: Engine) -> Generator:
+def get_session_generator(engine: Engine) -> Generator[Session]:
     session = Session(bind=engine)
     try:
         _ = session.connection()
@@ -138,7 +138,10 @@ def get_session_generator(engine: Engine) -> Generator:
 
 
 def get_session(engine: Engine) -> Session:
-    """to be used with:
+    """
+    get the db session.
+
+    To be used with:
     with get_session(engine) as session:
      ...
     """
@@ -146,7 +149,7 @@ def get_session(engine: Engine) -> Session:
 
 
 @functools.cache
-def is_sqlserver(engine) -> bool:
+def is_sqlserver(engine: Engine) -> bool:
     """Returns True if the engine is a sqlserver"""
     inspector = inspect(engine)
     return "mssql" in inspector.dialect.name.lower()
@@ -159,7 +162,9 @@ def is_sqlite(engine: Engine) -> bool:
     return "sqlite" in inspector.dialect.name.lower()
 
 
-def inject_sa_column_kwargs(model: Any, column_name: str, sa_column_kwargs: dict):
+def inject_sa_column_kwargs(
+    model: Any, column_name: str, sa_column_kwargs: dict
+) -> None:  # noqa: ANN401
     # Get the table object from SQLAlchemy metadata
     table = model.__table__
 
@@ -192,10 +197,17 @@ def create_db_and_tables(engine: Engine) -> None:
 
 
 def create_db_engine(
-    db_url: str, db_schema: str | None = None, echo: bool = False, **kwargs
+    db_url: str,
+    db_schema: str | None = None,
+    echo: bool = False,
+    **kwargs: Any,  # noqa: ANN401
 ) -> Any:
-    """Creates a db engine for the url. Use this if you do not want to use the st.connection.
-    Use case: Initialize the db before startup"""
+    """
+    Creates a db engine for the url.
+
+    Use this if you do not want to use the st.connection.
+    Use case: Initialize the db before startup
+    """
     use_setinputsizes = None
     if db_url.startswith("postgres"):
         connect_args: dict[str, Any] = {
@@ -214,7 +226,7 @@ def create_db_engine(
         use_setinputsizes = False
 
     else:
-        connect_args = dict()
+        connect_args = {}
     if use_setinputsizes is None:
         engine = create_engine(db_url, connect_args=connect_args, echo=echo, **kwargs)
     else:

@@ -12,7 +12,6 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 
 def render_debug_page() -> None:
     """Render the debug page"""
-
     st.write("## Session State")
     session_state = dict(st.session_state.items())
 

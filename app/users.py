@@ -2,7 +2,8 @@
 
 import logging
 import time
-from typing import Any, Callable, Literal, Optional, TypeAlias
+from collections.abc import Callable
+from typing import Any, Literal, TypeAlias
 
 import streamlit as st
 from common import (
@@ -39,9 +40,10 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 def render_roles(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
-    users_roles: Optional[set[str]] = set(
-        [r.name for r in selected_user.roles if r.name != "PUBLIC"]
-    )
+    users_roles: set[str] | None = {
+        r.name for r in selected_user.roles if r.name != "PUBLIC"
+    }
+
     # Only administrator can assign another one the administrator roles
     options = sorted(
         [
@@ -52,9 +54,8 @@ def render_roles(title: str, selected_user: Participant, disabled: bool) -> list
         ]
     )
     key = "users_roles_multiselect"
-    dis = disabled or (
-        True if (selected_user.state == ParticipantState.TERMINATED) else False
-    )
+    dis = disabled or selected_user.state == ParticipantState.TERMINATED
+
     # remove items from the defaults which are not in the options. Otherwise -> crash
     if users_roles:
         defaults = [item for item in options if item in list(users_roles)]
@@ -86,7 +87,6 @@ def render_effective_roles(title: str, selected_user: Participant) -> None:
         disabled=True,
         label_visibility="collapsed",
     )
-    return None
 
 
 def render_org_units(
@@ -94,17 +94,16 @@ def render_org_units(
 ) -> list[str]:
     """Renders the Org Units page and returns a list of org unit display names"""
     st.write(title)
-    selected_user_orgs: Optional[set[str]] = set(
-        [ou.display_name for ou in selected_user.org_units]
-    )
+    selected_user_orgs: set[str] | None = {
+        ou.display_name for ou in selected_user.org_units
+    }
+
     if not selected_user_orgs:
         selected_user_orgs = None
     all_orgs = get_org_units(only_active=True)
     options = [o.display_name for o in all_orgs]
 
-    dis = disabled or (
-        True if (selected_user.state == ParticipantState.TERMINATED) else False
-    )
+    dis = disabled or selected_user.state == ParticipantState.TERMINATED
 
     key = "users_member_of_multiselect"
     member_of = st.multiselect(
@@ -120,11 +119,12 @@ def render_org_units(
 def render_proxy_of(
     title: str, selected_user: Participant, disabled: bool
 ) -> list[str]:
-    """Renders the Proxy of section"""
+    """Renders the Proxy of section."""
     st.write(title)
-    selected_users_proxy_of: Optional[set[str]] = set(
-        [po.display_name for po in selected_user.proxy_of]
-    )
+    selected_users_proxy_of: set[str] | None = {
+        po.display_name for po in selected_user.proxy_of
+    }
+
     if not selected_users_proxy_of:
         selected_users_proxy_of = None
     all_users: list[Participant] = get_users(only_active=False)
@@ -135,9 +135,7 @@ def render_proxy_of(
             if x.display_name != st.session_state.get("users_selectbox", "")
         ]
     )
-    dis = disabled or (
-        True if (selected_user.state == ParticipantState.TERMINATED) else False
-    )
+    dis = disabled or selected_user.state == ParticipantState.TERMINATED
 
     key = "users_proxy_of_multiselect"
     proxy_of = st.multiselect(
@@ -154,17 +152,15 @@ def render_proxy_of(
 def render_proxies(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the proxies"""
     st.write(title)
-    selected_users_proxies: Optional[set[str]] = set(
-        [po.display_name for po in selected_user.proxies]
-    )
+    selected_users_proxies: set[str] | None = {
+        po.display_name for po in selected_user.proxies
+    }
     if not selected_users_proxies:
         selected_users_proxies = None
     all_users = [
         x.display_name for x in get_users(only_active=True) if x.id != selected_user.id
     ]
-    dis = disabled or (
-        True if (selected_user.state == ParticipantState.TERMINATED) else False
-    )
+    dis = disabled or selected_user.state == ParticipantState.TERMINATED
 
     key = "users_proxies_multiselect"
     proxies = st.multiselect(
@@ -184,14 +180,15 @@ def add_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """Adds relations to a participant
+    """
+    Adds relations to a participant.
+
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
-
     if not related_participant_ids:
         return
     try:
@@ -205,7 +202,7 @@ def add_relations(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(
             f"Added {relation_type.value} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
@@ -218,14 +215,15 @@ def add_reverse_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """Adds reverse relations to a participant
+    """
+    Adds reverse relations to a participant.
+
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
-
     if not related_participant_ids:
         return
     try:
@@ -239,7 +237,7 @@ def add_reverse_relations(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(
             f"Added {relation_type=} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
@@ -252,14 +250,15 @@ def delete_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """Adds relations to a participant
+    """
+    Adds relations to a participant.
+
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
-
     if not related_participant_ids:
         return
     try:
@@ -272,7 +271,7 @@ def delete_relations(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(
             f"Deleted {relation_type=} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
@@ -285,14 +284,15 @@ def delete_reverse_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """Deletes relations to a participant
+    """
+    Deletes relations to a participant.
+
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
-
     if not related_participant_ids:
         return
     try:
@@ -305,7 +305,7 @@ def delete_reverse_relations(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(
             f"Deleted {relation_type=} to {participant.name} {', '.join([str(i) for i in related_participant_ids])}"
@@ -331,7 +331,7 @@ def add_roles(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(f"Role(s): {', '.join(roles)} added")
 
@@ -407,7 +407,7 @@ def add_proxy_of(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(f"User is now new proxy of: {', '.join(proxy_of)}")
 
@@ -456,7 +456,7 @@ def delete_orgs(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(f"User removed from these Org Units: {', '.join(org_units)}")
 
@@ -480,7 +480,7 @@ def add_proxy(
     except Exception as e:
         st.exception(e)
         logger.exception(e)
-        raise e
+        raise
     else:
         logger.debug(f"New proxies: {', '.join(proxies)}")
 
@@ -538,7 +538,7 @@ def process_participant_changes(
         add_func(pati_repo, selected_participant, new_items)
     if deleted_items:
         delete_func(pati_repo, selected_participant, deleted_items)
-    return True if new_items or deleted_items else False
+    return bool(new_items or deleted_items)
 
 
 def save_user_changes(
@@ -641,7 +641,6 @@ def save_new_user(
     email: str,
 ) -> None:
     """Saves the new user and grants the role PUBLIC to the user"""
-
     try:
         create = ParticipantCreate(
             name=username,
@@ -670,8 +669,11 @@ def save_new_user(
 def check_user_exists(
     pati_repo: ParticipantRepository, name: str, display_name: str
 ) -> bool:
-    """Checks if the user exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise."""
+    """
+    Checks if the user exists by name or display name, whether active or terminated.
+
+    Returns True if the user already exists, False otherwise.
+    """
     return check_pati_exists(pati_repo, ParticipantType.HUMAN, name, display_name)
 
 
@@ -709,7 +711,7 @@ def render_create_user_form(title: str) -> None:
                 finalize_user_creation(display_name)
 
     # noinspection PyShadowingNames
-    def finalize_user_creation(display_name: str):
+    def finalize_user_creation(display_name: str) -> None:
         time.sleep(1)
         get_users.clear()
         st.session_state["users_selectbox_selected"] = display_name
@@ -735,7 +737,7 @@ def render_create_user_form(title: str) -> None:
                 process_form_submission(username, display_name, email, description)
 
 
-def render_user_selectbox() -> Optional[Participant]:
+def render_user_selectbox() -> Participant | None:
     """Renders the users selectbox"""
     show_only_active = st.toggle(label="Show only active", value=True)
     # for speed, we do not query the relations. This will be done when we have selected one user
@@ -765,11 +767,10 @@ def render_user_selectbox() -> Optional[Participant]:
             include_proxies=True,
         ):
             return selected_user
-        else:
-            st.error(f"Selected user not found. {selected} ")
-            # Remove the user from the session_state.user_users
-            st.session_state.users_all_users.pop(selected)
-            st.stop()
+        st.error(f"Selected user not found. {selected} ")
+        # Remove the user from the session_state.user_users
+        st.session_state.users_all_users.pop(selected)
+        st.stop()
     else:
         selected_user = None
     return selected_user
@@ -793,7 +794,7 @@ def render_update_user_form(selected_user: Participant) -> None:
         }
 
     # noinspection PyShadowingNames
-    def process_form_submission(pati_repo: ParticipantRepository):
+    def process_form_submission(pati_repo: ParticipantRepository) -> None:
         user_changes = {k: v for k, v in get_user_changes().items() if v is not None}
         try:
             updated: bool = save_user_changes(
@@ -812,7 +813,7 @@ def render_update_user_form(selected_user: Participant) -> None:
             handle_update_result(updated, pati_repo)
 
     # noinspection PyShadowingNames
-    def handle_update_result(updated: bool, pati_repo: ParticipantRepository):
+    def handle_update_result(updated: bool, pati_repo: ParticipantRepository) -> None:
         if updated:
             pati_repo.commit()
             get_users.clear()

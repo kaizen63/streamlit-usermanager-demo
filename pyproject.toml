@@ -31,15 +31,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black",
-    "isort",
     "mypy",
     "pytest",
     "bump-my-version",
     "ruff",
     "coverage",
     "sqlalchemy2-stubs",
-    "flake8",
     "pandas-stubs",
 ]
 

@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
-from ..models import (
+from ..models import (  # noqa: TID252
     Participant,
     ParticipantCreate,
     ParticipantState,
@@ -14,7 +14,7 @@ from ..models import (
 
 
 def test_participant_model() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     p = Participant.model_validate(
         {
             "id": 1,
@@ -42,7 +42,7 @@ def test_participant_model() -> None:
 
 
 def test_participant_model_wrong_name_start() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantCreate.model_validate(
             {
@@ -66,7 +66,7 @@ def test_participant_model_wrong_name_start() -> None:
 
 
 def test_participant_model_wrong_name_length() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantCreate.model_validate(
             {
@@ -91,7 +91,7 @@ def test_participant_model_wrong_name_length() -> None:
 
 
 def test_participant_model_wrong_email() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = Participant.model_validate(
             {
@@ -123,7 +123,7 @@ def test_participant_model_missing_fields() -> None:
 
 
 def test_participant_create() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     p = ParticipantCreate.model_validate(
         {
             "name": "test",
@@ -189,7 +189,7 @@ def test_participant_create() -> None:
 
 
 def test_participant_create_wrong_ptype() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantCreate.model_validate(
             {
@@ -206,7 +206,7 @@ def test_participant_create_wrong_ptype() -> None:
 
 
 def test_participant_create_wrong_state() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantCreate.model_validate(
             {
@@ -223,7 +223,7 @@ def test_participant_create_wrong_state() -> None:
 
 
 def test_participant_update() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     p = ParticipantUpdate.model_validate(
         {
             "name": "test1",
@@ -264,7 +264,7 @@ def test_participant_update() -> None:
 
 
 def test_participant_update_ptype() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantUpdate.model_validate(
             {
@@ -281,7 +281,7 @@ def test_participant_update_ptype() -> None:
 
 
 def test_participant_update_wrong_state() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantUpdate.model_validate(
             {
@@ -297,7 +297,7 @@ def test_participant_update_wrong_state() -> None:
 
 
 def test_participant_update_wrong_name() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantUpdate.model_validate(
             {
@@ -313,7 +313,7 @@ def test_participant_update_wrong_name() -> None:
 
 
 def test_participant_update_wrong_email() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValidationError):
         _ = ParticipantUpdate.model_validate(
             {
@@ -328,7 +328,7 @@ def test_participant_update_wrong_email() -> None:
 
 
 def test_participant_wrong_name() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError):  # noqa: PT012
         _ = ParticipantCreate.model_validate(
             {
                 "id": 1,
@@ -362,7 +362,7 @@ def test_participant_wrong_name() -> None:
 
 
 @pytest.mark.parametrize(
-    "name, display_name, participant_type, created_by, expected_result",
+    ("name", "display_name", "participant_type", "created_by", "expected_result"),
     [
         (
             "test-user",
@@ -388,7 +388,11 @@ def test_participant_wrong_name() -> None:
     ],
 )
 def test_pati_model_create(
-    name, display_name, participant_type, created_by, expected_result
+    name: str,
+    display_name: str,
+    participant_type: str,
+    created_by: str,
+    expected_result: str,
 ) -> None:
     create = ParticipantCreate(
         name=name,

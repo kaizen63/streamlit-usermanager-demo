@@ -1,8 +1,10 @@
 """Defines the view participant_relations_v"""
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import event, text
+from sqlalchemy.engine import Connection
 from sqlmodel import SQLModel
 
 from .db_schema import schema_prefix
@@ -38,10 +40,10 @@ from {schema_prefix}participant_relations r
 inner join {schema_prefix}participants p1 on (r.pati1_id = p1.id)
 inner join {schema_prefix}participants p2 on (r.pati2_id = p2.id)
 
-"""
+"""  # noqa: S608
 
 
 @event.listens_for(SQLModel.metadata, "after_create")
-def create_view(target, connection, **kw) -> None:
+def create_view(_target: Any, connection: Connection, **_kwargs: Any) -> None:  # noqa: ANN401
     """Creates the view participant_relations_v after the table creation"""
     connection.execute(text(create_view_sql))

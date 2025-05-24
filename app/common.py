@@ -1,14 +1,16 @@
 """Functions called by other modules"""
 
 import logging
+from collections.abc import Iterable
 
 # from pydantic import BaseModel, Field
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Optional
 
 import casbin
+from casbin.rbac import RoleManager
 import streamlit as st
 from config import settings
 from streamlit_ldap_authenticator import UserInfos
@@ -29,14 +31,12 @@ class CurrentUser:
     def update_session_state(self) -> None:
         """Updates the session state to reflect the current user"""
         st.session_state["current_user"] = asdict(self)
-        return
 
     @staticmethod
     def get_from_session_state() -> Optional["CurrentUser"]:
         if "current_user" in st.session_state:
             return CurrentUser(**st.session_state["current_user"])
-        else:
-            return CurrentUser()
+        return CurrentUser()
 
 
 class AppRoles(StrEnum):
@@ -59,21 +59,22 @@ APP_ROLES = {str(member) for member in AppRoles}
 class MissingStateVariableError(Exception):
     """Exception for missing variables"""
 
-    def __init__(self, missing) -> None:
+    def __init__(self, missing: str) -> None:
         super().__init__(f"Missing session state variable {missing}.")
         self.message: str = f"Missing session state variable {missing}."
 
 
-def dequote(s):
+def dequote(s) -> str:
     """
     If a string has single or double quotes around it, remove them.
+
     Make sure the pair of quotes match.
     If a matching pair of quotes is not found,
     or there are less than 2 characters, return the string unchanged.
     """
     if s is None or not isinstance(s, str):
         return s
-    if (len(s) >= 2 and s[0] == s[-1]) and s[0] in ("'", '"'):
+    if (len(s) >= 2 and s[0] == s[-1]) and s[0] in ("'", '"'):  # noqa: PLR2004
         return s[1:-1]
     return s
 
@@ -86,9 +87,13 @@ def get_st_current_user() -> CurrentUser | None:
     return CurrentUser(**st_current_user)
 
 
-def user_is_manager(user: Optional[UserInfos] = None) -> bool:
-    """Checks if the user is a manager. If user is None, uses
-    st.session_state.current_user.title"""
+def user_is_manager(user: UserInfos | None = None) -> bool:
+    """
+    Checks if the user is a manager.
+
+    If user is None, uses
+    st.session_state.current_user.title
+    """
     if not user:
         current_user = CurrentUser.get_from_session_state()
         title = current_user.title if current_user else None
@@ -109,10 +114,9 @@ def compare_lists(a: list[str], b: list[str]) -> tuple[list[str], list[str]]:
 
 
 def compute_effective_app_roles(
-    roles: Union[list[str] | set[str]],
+    roles: list[str] | set[str],
 ) -> set[str]:
     """Returns the set of effective roles in this application"""
-
     effective_roles = list(roles.copy())
 
     if AppRoles.ADMINISTRATOR in roles:
@@ -149,7 +153,6 @@ def check_access(username: str, object_: str, action: str) -> bool:
 
 def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
-
     username = username or st.session_state.get("username", None)
     if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get("roles", []):
         return True
@@ -165,12 +168,14 @@ def filter_list(
     items: Iterable[str],
     exclude_keywords: list[str] | tuple[str, ...] | set[str],
 ) -> list[str]:
-    """Returns the input list where none of the items has one with a keyword in it.
+    """
+    Returns the input list where none of the items has one with a keyword in it.
+
     Example: input = ['SECRET_KEY', 'PASSWORD', 'DB_SERVER', 'DB_PORT']
              exclude_keywords = ("KEY", "PASSWORD")
              returns ['DB_SERVER', 'DB_PORT']
     """
-    if not isinstance(exclude_keywords, (list, tuple, set)):
+    if not isinstance(exclude_keywords, list | tuple | set):
         raise TypeError("exclude_keywords must be a list or tuple")
 
     return [
@@ -178,23 +183,23 @@ def filter_list(
     ]
 
 
-def safe_index[T](
-    iterable: Iterable[T], item: T, default: int | None = None
-) -> int | None:
+def safe_index[
+    T
+](iterable: Iterable[T], item: T, default: int | None = None) -> int | None:
     return next((i for i, x in enumerate(iterable) if x == item), default)
 
 
-def get_role_manager():
+def get_role_manager() -> RoleManager:
     """Returns the role manager from the policy enforcer"""
     return get_policy_enforcer().get_role_manager()
 
 
-def roles_of_role(role: str, role_manager) -> list[str]:
+def roles_of_role(role: str, role_manager: RoleManager) -> list[str]:
     """Returns the roles of a role. Assigned in the policy.csv"""
     return role_manager.get_roles(role)
 
 
-def get_all_roles(role: str, seen: set[str], role_manager) -> None:
+def get_all_roles(role: str, seen: set[str], role_manager: RoleManager) -> None:
     """Get all roles of a role recursive. Drill down into each role to find other role to tole assignments"""
     if role in seen:
         return

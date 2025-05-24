@@ -12,16 +12,13 @@ from sqlalchemy import Connection, Engine, text
 from sqlmodel import Session
 
 schema = os.getenv("DB_SCHEMA")
-if schema:
-    schema_prefix = schema + "."
-else:
-    schema_prefix = ""
+schema_prefix = schema + "." if schema else ""
 
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def create_participants(session: Session):
+def create_participants(session: Session) -> None:
     logger.debug("Create participant records")
     with ParticipantRepository(session) as repo:
         created_by = "SYSTEM"
@@ -115,7 +112,7 @@ def create_participants(session: Session):
                 created_by=created_by,
             ),
         ]
-        org_unit_lookup = dict()
+        org_unit_lookup = {}
         for org_unit in org_units:
             pati = repo.create(org_unit)
             org_unit_lookup[org_unit.name] = pati.id
@@ -218,7 +215,7 @@ def create_participants(session: Session):
             )
 
 
-def initialize_tables(engine: Engine):
+def initialize_tables(engine: Engine) -> None:
     """Load some bootstrap data into the database, so we can work with"""
     logger.info("Initialize database")
     with Session(engine) as session:
@@ -228,7 +225,7 @@ def initialize_tables(engine: Engine):
 
 
 def execute_sql(
-    connection: Connection, sql_text: str, raise_on_error: bool = False
+    connection: Connection, sql_text: str, _raise_on_error: bool = False
 ) -> None:
     try:
         connection.execute(text(sql_text))
@@ -240,7 +237,6 @@ def execute_sql(
 
 def grant_participant_permissions(connection: Connection) -> None:
     """Grants all permissions on participant related objects". Ignores all errors"""
-
     grants_sql: list[str] = [
         f"""grant select, insert, update on {schema_prefix}participants to some_role""",
         f"""grant select, insert, update, delete on {schema_prefix}participant_relations to some_role""",
@@ -248,10 +244,9 @@ def grant_participant_permissions(connection: Connection) -> None:
     ]
     for grant in grants_sql:
         execute_sql(connection, grant)
-    return
 
 
-def grant_permissions(engine: Engine):
+def grant_permissions(engine: Engine) -> None:
     """Grants the permissions to the tables and views"""
     with engine.connect() as connection:
         grant_participant_permissions(connection)

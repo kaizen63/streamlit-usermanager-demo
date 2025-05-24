@@ -1,9 +1,9 @@
 import base64
 import logging
 import pathlib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from http import HTTPStatus
-from typing import Iterable, Optional
 
 import streamlit as st
 from common import CurrentUser, check_access
@@ -47,12 +47,13 @@ def send_email(
     email_cc: Iterable[str],
     email_body: str,
     content_type: str = "text/html",
-    reply_to: Optional[str] = None,
-    attachments: Optional[list[MailAttachment]] = None,
-    mail_headers: Optional[dict[str, str]] = None,
+    reply_to: str | None = None,
+    attachments: list[MailAttachment] | None = None,
+    mail_headers: dict[str, str] | None = None,
 ) -> int:
     """
-    Send an email with optional attachments
+    Send an email with optional attachments.
+
     Args:
         sendgrid_api_key (str): The sendgrid API key. If None we read env variable SENDGRID_API_KEY
         mail_from (str): sender of the email
@@ -67,6 +68,7 @@ def send_email(
 
     Returns:
         status code (202 means success)
+
     """
     if not sendgrid_api_key:
         sendgrid_api_key = settings.SENDGRID_API_KEY
@@ -119,7 +121,7 @@ def send_email(
     except Exception as error:
         logger.exception(f"Error: {error}")
         logger.error(f"Recipients: to={';'.join(email_to)}, cc={';'.join(email_cc)}")
-        raise error
+        raise
     else:
         logger.info(f"Email sent to: {';'.join(email_to)}, cc: {';'.join(email_cc)}")
         if response.status_code != HTTPStatus.ACCEPTED:
@@ -130,7 +132,7 @@ def send_email(
     return response.status_code
 
 
-def render_contact_form():
+def render_contact_form() -> None:
     # st.write("## Send us a message")
     current_user = CurrentUser.get_from_session_state()
     with st.form(key="contact_form"):
