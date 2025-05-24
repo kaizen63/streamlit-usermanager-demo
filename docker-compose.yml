@@ -20,8 +20,8 @@ services:
           memory: 128M
 
     restart: unless-stopped
-    ports:
-      - "18501:8501"
+    #ports:
+    #  - "18501:8501"
     environment:
       ENV: prod
       DB_ENGINE: "sqlite"
@@ -45,4 +45,31 @@ services:
         required: false
       - path: ./.env.override
         required: false
+
+  caddy:
+    image: mycaddy:2.10
+    restart: unless-stopped
+    #cap_add:
+    #  - NET_ADMIN # necessary ?
+    ports:
+      - 8080:80
+      - 8081:443
+      - 8081:443/udp
+    volumes:
+      #- $PWD/Caddyfile:/etc/caddy/Caddyfile
+      #- $PWD/caddy/caddy_data:/data
+      #- $PWD/caddy/caddy_config:/config
+      - caddy_data:/data
+      - caddy_config:/config
+    build:
+      context: caddy
+  #db:
+  #    image: nouchka/sqlite3:latest
+  #    restart: unless-stopped
+  #    volumes:
+  #      - $PWD/app/participants/database/ddl/sqlite:/workspace
+
+volumes:
+  caddy_data:
+  caddy_config:
 

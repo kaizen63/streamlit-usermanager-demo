@@ -8,6 +8,7 @@ PYTHON_DIR = ./app
 # format all files
 fmt:
 	@echo "Running formatter..."
+	uv run ruff check --select 'I' ${PYTHON_DIR}
 	uv run ruff format --config ruff.toml ${PYTHON_DIR}
 
 
