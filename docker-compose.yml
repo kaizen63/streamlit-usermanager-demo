@@ -38,7 +38,7 @@ services:
       STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
       LOGGING_LOG_LEVEL: INFO
       LOGGING_CONFIG: log-config/logging-conf.prod.yaml
-      LDAP_SERVER: "ldap.forumsys.com"
+      LDAP_SERVER: "ldap.forumsys.com:389"
 
     env_file:
       - path: ./.env
