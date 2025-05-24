@@ -7,13 +7,16 @@ PYTHON_DIR = ./app
 
 # format all files
 fmt:
+	@echo "Running isort"
+	uv run isort ${PYTHON_DIR}
 	@echo "Running formatter..."
-	uv run ruff format --config ruff.toml ${PYTHON_DIR}
-
-# Lint the Python files with ruff
+	uv run ruff format --config pyproject.toml ${PYTHON_DIR}
+# Lint the Python files with flake8
 lint:
-	@echo "Running ruff linter..."
-	(uv run ruff check --config ruff.toml ${PYTHON_DIR} || uv run ruff check --config ruff.toml --statistics ${PYTHON_DIR}) | tee ruff_output.txt
+	@echo "Running flake8 linter..."
+	uv run flake8 ${PYTHON_DIR} --count --select=E9,F63,F7,F82 --show-source --statistics
+ 	# exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+	uv run flake8 ${PYTHON_DIR} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --ignore=F841,W503
 
 docker:
 	docker compose --file docker-compose.yml --progress=plain build

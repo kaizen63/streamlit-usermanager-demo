@@ -39,8 +39,7 @@ def render_filter_menu(
     key_prefix: str,
     select_column: str | None = None,
 ) -> pd.DataFrame:
-    """
-    Renders the filter menu and values menu. Returns the filtered dataframe if filtering is enabled.
+    """Renders the filter menu and values menu. Returns the filtered dataframe if filtering is enabled.
     key_prefix must be a unique key for the filter. If not provided we create one.
     """
     filter_menu = st.columns(3)
@@ -85,10 +84,8 @@ def render_sort_menu(
     key_prefix: str,
     exclude_columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """
-    Renders the sort menu and returns a sorted df if sorting is enabled.
-    key_prefix: Unique prefix for the elements in thi sort menu box
-    """
+    """Renders the sort menu and returns a sorted df if sorting is enabled.
+    key_prefix: Unique prefix for the elements in thi sort menu box"""
 
     def generate_key(suffix: str) -> str:
         return f"{key_prefix}_{suffix}"
@@ -140,12 +137,9 @@ def calculate_total_pages(total_size: int, page_size: int) -> int:
 
 
 def render_pagination_menu(df: pd.DataFrame, key_prefix: str) -> tuple[int, int]:
-    """
-    Renders the bottom menu with page count and batch size.
-
+    """Renders the bottom menu with page count and batch size.
     Returns:
          current_page, batch_size
-
     """
 
     def generate_key(suffix: str) -> str:
@@ -191,7 +185,8 @@ def calculate_height(df: pd.DataFrame, page_size: int) -> int:
 
 
 def paginate_df(df: pd.DataFrame, key_prefix: str) -> tuple[pd.DataFrame, int]:
-    """Renders pagination and returns the displayed dataframe and the page size"""
+    """renders pagination and returns the displayed dataframe and the page size"""
+
     current_page, page_size = render_pagination_menu(df, key_prefix)
     pages = split_dataframe(df, page_size)
     return (

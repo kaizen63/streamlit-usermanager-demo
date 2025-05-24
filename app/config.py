@@ -1,4 +1,5 @@
 import pathlib
+from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,27 +11,27 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """Settings of the App, read either from environment or .env file"""
 
-    DB_USERNAME: str | None = None
-    DB_PASSWORD: str | None = None
-    DB_SERVER: str | None = None
-    DB_PORT: int | None = None
-    DB_DATABASE: str | None = None
-    DB_DRIVER: str | None = None
+    DB_USERNAME: Optional[str] = None
+    DB_PASSWORD: Optional[str] = None
+    DB_SERVER: Optional[str] = None
+    DB_PORT: Optional[int] = None
+    DB_DATABASE: Optional[str] = None
+    DB_DRIVER: Optional[str] = None
 
-    DB_SCHEMA: str | None = None
+    DB_SCHEMA: Optional[str] = None
 
-    LDAP_SERVER: str | None = None
-    LOGGING_CONFIG: str | None = "log-config/logging-conf.yaml"
-    LOGGING_LOG_LEVEL: str | None = "INFO"
-    LOGGER_SERVICE: str | None = "stusermanagerdemo"
+    LDAP_SERVER: Optional[str] = None
+    LOGGING_CONFIG: Optional[str] = "log-config/logging-conf.yaml"
+    LOGGING_LOG_LEVEL: Optional[str] = "INFO"
+    LOGGER_SERVICE: Optional[str] = "stusermanagerdemo"
 
-    POLICY_TTL: int | None = 60
+    POLICY_TTL: Optional[int] = 60
 
-    LOGGER_NAME: str | None = "stusermanagerdemo"
+    LOGGER_NAME: Optional[str] = "stusermanagerdemo"
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
-        env_file=f"{ROOT!s}/.env",
+        env_file=f"{str(ROOT)}/.env",
         env_file_encoding="utf-8",
         extra="allow",
     )

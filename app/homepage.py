@@ -36,6 +36,7 @@ class ParticipantsTableHeader(StrEnum):
 
 def get_participants_data() -> pd.DataFrame | None:
     """Returns the participants table data"""
+
     with ParticipantRepository(get_db()) as repo:
         humans: list[Participant] = repo.get_all("HUMAN", include_relations=False)
         org_units: list[Participant] = repo.get_all("ORG_UNIT", include_relations=False)

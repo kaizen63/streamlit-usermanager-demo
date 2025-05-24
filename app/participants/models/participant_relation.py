@@ -1,15 +1,6 @@
-"""
-Participant Relation Module
-
-This module defines the data models and functionality for relationships between participants.
-It includes models for different types of relationships (GRANT, MEMBER OF, PROXY OF)
-and provides functionality for creating and querying participant relationships.
-The module uses SQLModel for ORM functionality and Pydantic for validation.
-"""
-
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Optional, TypeAlias
 
 from pydantic import (
     ValidationInfo,
@@ -29,11 +20,6 @@ from .db_schema import schema, schema_prefix
 class ParticipantRelationType(StrEnum):
     """
     Enum for the participant relation type.
-
-    Defines the allowed types of relationships between participants:
-    - GRANT: Assigns a role/permission to a participant
-    - MEMBER OF: Indicates membership in an organizational unit
-    - PROXY OF: Indicates a proxy relationship where one participant can act on behalf of another
     """
 
     GRANT = "GRANT"
@@ -41,7 +27,7 @@ class ParticipantRelationType(StrEnum):
     PROXY_OF = "PROXY OF"
 
 
-type ParticipantRelationTypeLiteral = Literal[
+ParticipantRelationTypeLiteral: TypeAlias = Literal[
     "GRANT",
     "MEMBER OF",
     "PROXY OF",
@@ -49,12 +35,7 @@ type ParticipantRelationTypeLiteral = Literal[
 
 
 class ParticipantRelationBase(SQLModel):
-    """
-    Base model for participant relationships.
-
-    Defines the core fields and validation for relationships between participants,
-    including the relationship type and metadata about creation.
-    """
+    """The relationship between participants"""
 
     model_config = {
         "extra": "forbid",
@@ -62,37 +43,16 @@ class ParticipantRelationBase(SQLModel):
         "from_attributes": True,
     }
 
-    pati1_id: int = Field(
-        ...,
-        description="ID of the first participant in the relationship",
-    )
-    pati2_id: int = Field(
-        ...,
-        description="ID of the second participant in the relationship",
-    )
+    pati1_id: int = Field(...)
+    pati2_id: int = Field(...)
     relation_type: ParticipantRelationTypeLiteral = Field(..., max_length=16)
-    created_by: str = Field(
-        ...,
-        description="Identifier of the participant who created this relationship",
-    )
+    created_by: str = Field(...)
     created_timestamp: datetime = Field(
-        ...,
-        default_factory=lambda: datetime.now(UTC),
-        description="Timestamp when the relationship was created",
+        ..., default_factory=lambda: datetime.now(timezone.utc)
     )
 
     @classmethod
     def get_field_names(cls, alias: bool = False) -> list[str]:
-        """
-        Return the list of field names of the class.
-
-        Args:
-            alias: If True, return the aliased field names
-
-        Returns:
-            list[str]: List of field names
-
-        """
         properties = cls.model_json_schema(alias).get("properties", {})
         return list(properties.keys())
 
@@ -101,46 +61,18 @@ class ParticipantRelationBase(SQLModel):
         mode="before",
     )
     @classmethod
-    def enum_to_string(cls, v: str, _info: ValidationInfo) -> str | None:
-        """
-        Converts enum values to strings.
-
-        Args:
-            v: The value to convert
-            _info: Validation info containing field context
-
-        Returns:
-            str or None: The string representation of the enum value
-
-        """
+    def enum_to_string(cls, v: str, info: ValidationInfo) -> Optional[str]:
         return str(v) if isinstance(v, StrEnum) else v
 
     @field_validator("created_by")
     @classmethod
-    def to_uppercase(cls, v: str | None, _info: ValidationInfo) -> str | None:
-        """
-        Converts field value to uppercase.
+    def to_uppercase(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """Uppercase a field"""
 
-        Args:
-            v: The value to convert
-            _info: Validation info containing field context
-
-        Returns:
-            str or None: The uppercase value
-
-        """
         return v.upper() if v else v
 
 
 class ParticipantRelationModel(ParticipantRelationBase, table=True):
-    """
-    SQLModel representation of a participant relationship for database storage.
-
-    This model maps to the 'participant_relations' table and includes constraints
-    and database-specific configuration including foreign keys, unique constraints,
-    and indexes for optimal performance.
-    """
-
     __tablename__ = "participant_relations"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -171,35 +103,18 @@ class ParticipantRelationModel(ParticipantRelationBase, table=True):
         ),
     )
 
-    id: int | None = Field(
-        default=None,
-        primary_key=True,
-        description="Unique identifier for the relationship",
-    )
+    id: int | None = Field(default=None, primary_key=True)
     pati1_id: int = Field(..., foreign_key=f"{schema_prefix}participants.id")
     pati2_id: int = Field(..., foreign_key=f"{schema_prefix}participants.id")
     # redefine as str to make the model work
-    relation_type: str = Field(..., max_length=16)
+    relation_type: str = Field(..., max_length=16)  # type: ignore
 
 
 class ParticipantRelationCreate(ParticipantRelationBase):
-    """
-    Model for creating new participant relationships.
+    """Create a relationship between participants"""
 
-    Extends ParticipantRelationBase with validation specific to the creation process.
-    This model is used when adding new relationships between participants.
-    """
+    pass
 
 
 class ParticipantRelation(ParticipantRelationBase):
-    """
-    Schema class for participant relationships with ID field.
-
-    This model extends ParticipantRelationBase with the ID field for use in
-    API responses and application logic.
-    """
-
-    id: int | None = Field(
-        default=None,
-        description="Unique identifier for the relationship",
-    )
+    id: int | None = Field(default=None)

@@ -1,13 +1,12 @@
 """Functions called by other modules"""
 
 import logging
-from collections.abc import Iterable
 
 # from pydantic import BaseModel, Field
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional, Union
 
 import casbin
 import streamlit as st
@@ -30,12 +29,14 @@ class CurrentUser:
     def update_session_state(self) -> None:
         """Updates the session state to reflect the current user"""
         st.session_state["current_user"] = asdict(self)
+        return
 
     @staticmethod
     def get_from_session_state() -> Optional["CurrentUser"]:
         if "current_user" in st.session_state:
             return CurrentUser(**st.session_state["current_user"])
-        return CurrentUser()
+        else:
+            return CurrentUser()
 
 
 class AppRoles(StrEnum):
@@ -85,11 +86,9 @@ def get_st_current_user() -> CurrentUser | None:
     return CurrentUser(**st_current_user)
 
 
-def user_is_manager(user: UserInfos | None = None) -> bool:
-    """
-    Checks if the user is a manager. If user is None, uses
-    st.session_state.current_user.title
-    """
+def user_is_manager(user: Optional[UserInfos] = None) -> bool:
+    """Checks if the user is a manager. If user is None, uses
+    st.session_state.current_user.title"""
     if not user:
         current_user = CurrentUser.get_from_session_state()
         title = current_user.title if current_user else None
@@ -110,9 +109,10 @@ def compare_lists(a: list[str], b: list[str]) -> tuple[list[str], list[str]]:
 
 
 def compute_effective_app_roles(
-    roles: list[str] | set[str],
+    roles: Union[list[str] | set[str]],
 ) -> set[str]:
     """Returns the set of effective roles in this application"""
+
     effective_roles = list(roles.copy())
 
     if AppRoles.ADMINISTRATOR in roles:
@@ -149,6 +149,7 @@ def check_access(username: str, object_: str, action: str) -> bool:
 
 def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
+
     username = username or st.session_state.get("username", None)
     if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get("roles", []):
         return True
@@ -164,8 +165,7 @@ def filter_list(
     items: Iterable[str],
     exclude_keywords: list[str] | tuple[str, ...] | set[str],
 ) -> list[str]:
-    """
-    Returns the input list where none of the items has one with a keyword in it.
+    """Returns the input list where none of the items has one with a keyword in it.
     Example: input = ['SECRET_KEY', 'PASSWORD', 'DB_SERVER', 'DB_PORT']
              exclude_keywords = ("KEY", "PASSWORD")
              returns ['DB_SERVER', 'DB_PORT']

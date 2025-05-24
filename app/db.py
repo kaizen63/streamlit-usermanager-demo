@@ -4,8 +4,7 @@ import functools
 import logging
 import os
 import urllib
-from collections.abc import Generator
-from typing import Any
+from typing import Any, Generator
 
 import streamlit as st
 from config import settings
@@ -56,6 +55,7 @@ def create_connection(
     db_url: str, db_schema: str | None = None, echo: bool = False
 ) -> SQLConnection:
     """Creates a (cached) streamlit connection. With this call you have access to the engine and the session"""
+
     if db_schema is None:
         db_schema = os.getenv("DB_SCHEMA", None)
 
@@ -138,8 +138,7 @@ def get_session_generator(engine: Engine) -> Generator:
 
 
 def get_session(engine: Engine) -> Session:
-    """
-    To be used with:
+    """to be used with:
     with get_session(engine) as session:
      ...
     """
@@ -195,10 +194,8 @@ def create_db_and_tables(engine: Engine) -> None:
 def create_db_engine(
     db_url: str, db_schema: str | None = None, echo: bool = False, **kwargs
 ) -> Any:
-    """
-    Creates a db engine for the url. Use this if you do not want to use the st.connection.
-    Use case: Initialize the db before startup
-    """
+    """Creates a db engine for the url. Use this if you do not want to use the st.connection.
+    Use case: Initialize the db before startup"""
     use_setinputsizes = None
     if db_url.startswith("postgres"):
         connect_args: dict[str, Any] = {

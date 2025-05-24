@@ -2,8 +2,7 @@
 
 import logging
 import time
-from collections.abc import Callable
-from typing import Any, Literal, TypeAlias
+from typing import Any, Callable, Literal, Optional, TypeAlias
 
 import streamlit as st
 from common import (
@@ -40,7 +39,7 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 def render_roles(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the roles multiselect"""
     st.write(title)
-    users_roles: set[str] | None = set(
+    users_roles: Optional[set[str]] = set(
         [r.name for r in selected_user.roles if r.name != "PUBLIC"]
     )
     # Only administrator can assign another one the administrator roles
@@ -87,6 +86,7 @@ def render_effective_roles(title: str, selected_user: Participant) -> None:
         disabled=True,
         label_visibility="collapsed",
     )
+    return None
 
 
 def render_org_units(
@@ -94,7 +94,7 @@ def render_org_units(
 ) -> list[str]:
     """Renders the Org Units page and returns a list of org unit display names"""
     st.write(title)
-    selected_user_orgs: set[str] | None = set(
+    selected_user_orgs: Optional[set[str]] = set(
         [ou.display_name for ou in selected_user.org_units]
     )
     if not selected_user_orgs:
@@ -122,7 +122,7 @@ def render_proxy_of(
 ) -> list[str]:
     """Renders the Proxy of section"""
     st.write(title)
-    selected_users_proxy_of: set[str] | None = set(
+    selected_users_proxy_of: Optional[set[str]] = set(
         [po.display_name for po in selected_user.proxy_of]
     )
     if not selected_users_proxy_of:
@@ -154,7 +154,7 @@ def render_proxy_of(
 def render_proxies(title: str, selected_user: Participant, disabled: bool) -> list[str]:
     """Render the proxies"""
     st.write(title)
-    selected_users_proxies: set[str] | None = set(
+    selected_users_proxies: Optional[set[str]] = set(
         [po.display_name for po in selected_user.proxies]
     )
     if not selected_users_proxies:
@@ -184,14 +184,14 @@ def add_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """
-    Adds relations to a participant
+    """Adds relations to a participant
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
+
     if not related_participant_ids:
         return
     try:
@@ -218,14 +218,14 @@ def add_reverse_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """
-    Adds reverse relations to a participant
+    """Adds reverse relations to a participant
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
+
     if not related_participant_ids:
         return
     try:
@@ -252,14 +252,14 @@ def delete_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """
-    Adds relations to a participant
+    """Adds relations to a participant
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
+
     if not related_participant_ids:
         return
     try:
@@ -285,14 +285,14 @@ def delete_reverse_relations(
     related_participant_ids: list[int],
     relation_type: ParticipantRelationType,
 ) -> None:
-    """
-    Deletes relations to a participant
+    """Deletes relations to a participant
     Args:
         pati_repo: The repository
         participant: The participant where the relation is added to
         related_participant_ids: The participant ids to connect the participant with.
         relation_type: One of GRANT, MEMBER OF or PROXY OF
     """
+
     if not related_participant_ids:
         return
     try:
@@ -641,6 +641,7 @@ def save_new_user(
     email: str,
 ) -> None:
     """Saves the new user and grants the role PUBLIC to the user"""
+
     try:
         create = ParticipantCreate(
             name=username,
@@ -669,10 +670,8 @@ def save_new_user(
 def check_user_exists(
     pati_repo: ParticipantRepository, name: str, display_name: str
 ) -> bool:
-    """
-    Checks if the user exists by name or display name, whether active or terminated.
-    Returns True if the user already exists, False otherwise.
-    """
+    """Checks if the user exists by name or display name, whether active or terminated.
+    Returns True if the user already exists, False otherwise."""
     return check_pati_exists(pati_repo, ParticipantType.HUMAN, name, display_name)
 
 
@@ -736,7 +735,7 @@ def render_create_user_form(title: str) -> None:
                 process_form_submission(username, display_name, email, description)
 
 
-def render_user_selectbox() -> Participant | None:
+def render_user_selectbox() -> Optional[Participant]:
     """Renders the users selectbox"""
     show_only_active = st.toggle(label="Show only active", value=True)
     # for speed, we do not query the relations. This will be done when we have selected one user
@@ -766,10 +765,11 @@ def render_user_selectbox() -> Participant | None:
             include_proxies=True,
         ):
             return selected_user
-        st.error(f"Selected user not found. {selected} ")
-        # Remove the user from the session_state.user_users
-        st.session_state.users_all_users.pop(selected)
-        st.stop()
+        else:
+            st.error(f"Selected user not found. {selected} ")
+            # Remove the user from the session_state.user_users
+            st.session_state.users_all_users.pop(selected)
+            st.stop()
     else:
         selected_user = None
     return selected_user

@@ -240,6 +240,7 @@ def execute_sql(
 
 def grant_participant_permissions(connection: Connection) -> None:
     """Grants all permissions on participant related objects". Ignores all errors"""
+
     grants_sql: list[str] = [
         f"""grant select, insert, update on {schema_prefix}participants to some_role""",
         f"""grant select, insert, update, delete on {schema_prefix}participant_relations to some_role""",
@@ -247,6 +248,7 @@ def grant_participant_permissions(connection: Connection) -> None:
     ]
     for grant in grants_sql:
         execute_sql(connection, grant)
+    return
 
 
 def grant_permissions(engine: Engine):

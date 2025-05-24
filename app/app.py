@@ -1,7 +1,6 @@
 import logging
 import os
-from collections.abc import Iterable
-from typing import Any, Literal, TypeAlias
+from typing import Any, Iterable, Literal, Optional, TypeAlias
 
 import streamlit as st
 from common import (
@@ -52,10 +51,10 @@ LayoutType: TypeAlias = Literal["centered", "wide"]
 def update_user_record(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> Participant:
-    """
-    Compares user infos with db and updates the db if they are not equal.
+    """Compares user infos with db and updates the db if they are not equal.
     Returns the (modified) participant
     """
+
     user_changes: dict[str, str | None] = {
         "display_name": (
             user["displayName"] if pati.display_name != user["displayName"] else None
@@ -95,8 +94,7 @@ def add_roles_to_policy_enforcer(username, roles: Iterable[str]) -> None:
 def update_user_session_state(
     pati_repo: ParticipantRepository, pati: Participant, user: UserInfos
 ) -> None:
-    """
-    Clears the cache and sets the following variables in st.session_state:
+    """Clears the cache and sets the following variables in st.session_state:
     current_user
     username
     user_display_name
@@ -128,9 +126,8 @@ def update_user_session_state(
     current_user["title"] = user.get("title") or "unknown"
 
 
-def check_user(conn: Connection | None, user: UserInfos) -> bool | str:
-    """
-    Validate if the AD user is our list of participants
+def check_user(conn: Optional[Connection], user: UserInfos) -> bool | str:
+    """Validate if the AD user is our list of participants
 
     UserInfos fields (from Active Directory):
     sAMAccountName : Username
@@ -188,13 +185,15 @@ def check_user(conn: Connection | None, user: UserInfos) -> bool | str:
                 st_effective_roles,
             )
             return True
-        # Not a user in the database. Check the job title
-        logger.debug(f"check_user: {username=} not known. Checking job title")
-        if user_is_manager(user):
-            initialize_manager_user(user, username)
-            return True
-        clear_user_session()
-        return "You are not authorized to login"
+        else:
+            # Not a user in the database. Check the job title
+            logger.debug(f"check_user: {username=} not known. Checking job title")
+            if user_is_manager(user):
+                initialize_manager_user(user, username)
+                return True
+            else:
+                clear_user_session()
+                return "You are not authorized to login"
 
 
 def initialize_manager_user(user: UserInfos, username: str) -> None:
@@ -298,6 +297,7 @@ def configure_main_page() -> None:
 
 def get_authenticator() -> Authenticate:
     """Gets the Authenticator instance"""
+
     ldap_config = dict(st.secrets["ldap"])
     ldap_config["server_path"] = settings.LDAP_SERVER or dequote(
         st.secrets["ldap"]["server_path"]
@@ -322,6 +322,7 @@ def is_database_empty(engine: Engine) -> bool:
 
 def setup_database() -> None:
     """We create the tables in a sqlite database. Executed unless db_initialized is not present in st.session_state"""
+
     if not st.session_state.get("db_initialized"):
         db_name_env = os.getenv("DB_DATABASE")
         db_eng_env: str | None = os.getenv("DB_ENGINE")

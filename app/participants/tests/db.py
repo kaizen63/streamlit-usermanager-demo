@@ -29,6 +29,7 @@ def is_sqlserver(engine: Engine) -> bool:
 
 def get_url(db_engine: str | None = None) -> str:
     """Returns the database URL, defaulting to the DB_ENGINE environment variable if not provided."""
+
     db_engine = db_engine or os.getenv("DB_ENGINE")
 
     if not db_engine:
@@ -61,10 +62,9 @@ def get_url(db_engine: str | None = None) -> str:
 def create_db_engine(
     db_url: str, db_schema: str | None = None, echo: bool = False
 ) -> Any:
-    """
-    Creates a database engine for the given URL. Use this if you do not want to use st.connection.
-    Use case: Initialize the database before startup.
-    """
+    """Creates a database engine for the given URL. Use this if you do not want to use st.connection.
+    Use case: Initialize the database before startup."""
+
     connect_args: dict[str, str | int | bool] = {}
     use_setinputsizes = None
 
