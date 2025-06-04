@@ -1,6 +1,8 @@
 import logging
 import os
 import urllib
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import inspect
@@ -109,3 +111,28 @@ def create_db_and_tables(engine: Engine) -> None:
         print(e)
         db.rollback()
         raise
+
+
+engine: Engine | None = None
+
+
+def get_engine() -> Engine:
+    """Returns the SQLAlchemy engine object from the SQLConnection"""
+    global engine  # noqa: PLW0603
+    if engine is not None:
+        return engine
+    engine = create_db_engine(get_url())
+    return engine
+
+
+@contextmanager
+def get_session() -> Generator[Session]:
+    """Get a session from the engine."""
+    session = Session(bind=get_engine())
+    try:
+        session.connection()
+        yield session  # Properly manages session
+    except PendingRollbackError:
+        session.rollback()
+    finally:
+        session.close()  # Ensures session cleanup

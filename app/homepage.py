@@ -13,7 +13,7 @@ from dataframe_utilities import (
     render_filter_menu,
     render_sort_menu,
 )
-from db import get_db
+from db import get_session
 from participants import Participant, ParticipantRepository
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -36,7 +36,7 @@ class ParticipantsTableHeader(StrEnum):
 
 def get_participants_data() -> pd.DataFrame | None:
     """Returns the participants table data"""
-    with ParticipantRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         humans: list[Participant] = repo.get_all("HUMAN", include_relations=False)
         org_units: list[Participant] = repo.get_all("ORG_UNIT", include_relations=False)
         roles: list[Participant] = repo.get_all("ROLE", include_relations=False)

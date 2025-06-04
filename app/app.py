@@ -16,9 +16,10 @@ from config import settings
 from db import (
     create_db_and_tables,
     create_db_engine,
-    get_db,
     get_engine,
+    get_session,
     get_url,
+    log_session_pool_statistics,
 )
 from dotenv import find_dotenv, load_dotenv
 from initialize_tables import initialize_tables
@@ -161,7 +162,7 @@ def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
     if current_user and username == current_user.username:
         return True
 
-    with ParticipantRepository(get_db()) as pati_repo:
+    with get_session() as session, ParticipantRepository(session) as pati_repo:
         pati = pati_repo.get_by_name(
             username,
             participant_type=ParticipantType.HUMAN,
@@ -384,6 +385,7 @@ def main() -> None:
             render_self_registration_form("## Self Registration")
         else:
             render_main_menu()
+    log_session_pool_statistics("app.main")
 
     # Now we are disconnected from the db. Callbacks need to reconnect
 

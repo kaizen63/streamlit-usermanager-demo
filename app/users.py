@@ -15,7 +15,7 @@ from common import (
     safe_index,
 )
 from config import settings
-from db import get_db
+from db import get_session
 from participant_utilities import (
     check_pati_exists,
     get_org_units,
@@ -75,7 +75,7 @@ def render_roles(title: str, selected_user: Participant, disabled: bool) -> list
 def render_effective_roles(title: str, selected_user: Participant) -> None:
     """Render the roles multiselect"""
     st.write(title)
-    with ParticipantRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         effective_roles = list(repo.compute_effective_roles(selected_user))
 
     options = [x for x in effective_roles if x != "PUBLIC"]
@@ -693,7 +693,7 @@ def render_create_user_form(title: str) -> None:
             return
 
         username = username.upper()
-        with ParticipantRepository(get_db()) as pati_repo:
+        with get_session() as session, ParticipantRepository(session) as pati_repo:
             if check_user_exists(pati_repo, username, display_name):
                 return
 
@@ -879,7 +879,7 @@ def render_update_user_form(selected_user: Participant) -> None:
         render_effective_roles("Effective Roles:", selected_user)
 
         if st.form_submit_button("Save", disabled=disabled):
-            with ParticipantRepository(get_db()) as pati_repo:
+            with get_session() as session, ParticipantRepository(session) as pati_repo:
                 process_form_submission(pati_repo)
 
 
@@ -929,7 +929,7 @@ def render_self_registration_form(title: str) -> None:
             description=job_title,
         )
 
-        with ParticipantRepository(get_db()) as pati_repo:
+        with get_session() as session, ParticipantRepository(session) as pati_repo:
             try:
                 new_pati = pati_repo.create(create)
                 add_roles(pati_repo, new_pati, [AppRoles.USER_READ])

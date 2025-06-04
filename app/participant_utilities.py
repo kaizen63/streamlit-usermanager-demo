@@ -10,7 +10,7 @@ from typing import Literal, TypeAlias
 import streamlit as st
 from codetiming import Timer
 from config import settings
-from db import get_db
+from db import get_session
 from humanfriendly import format_timespan
 from participants import (
     Participant,
@@ -37,7 +37,8 @@ def get_users(
             f"{format_timespan(sec)}",
             logger=logger.debug,
         ),
-        ParticipantRepository(get_db()) as pati_repo,
+        get_session() as session,
+        ParticipantRepository(session) as pati_repo,
     ):
         users: list[Participant] = pati_repo.get_all(
             ParticipantType.HUMAN,
@@ -61,7 +62,8 @@ def get_roles(
             f"{format_timespan(sec)}",
             logger=logger.debug,
         ),
-        ParticipantRepository(get_db()) as pati_repo,
+        get_session() as session,
+        ParticipantRepository(session) as pati_repo,
     ):
         roles: list[Participant] = pati_repo.get_all(
             ParticipantType.ROLE,
@@ -85,7 +87,8 @@ def get_org_units(
             f"{format_timespan(sec)}s",
             logger=logger.debug,
         ),
-        ParticipantRepository(get_db()) as pati_repo,
+        get_session() as session,
+        ParticipantRepository(session) as pati_repo,
     ):
         roles: list[Participant] = pati_repo.get_all(
             ParticipantType.ORG_UNIT,
@@ -113,7 +116,7 @@ def get_participant(
     pati_id: int, include_relations: bool = True, include_proxies: bool = True
 ) -> Participant | None:
     """Get a participant by its id. Can be of all types of participants"""
-    with ParticipantRepository(get_db()) as pati_repo:
+    with get_session() as session, ParticipantRepository(session) as pati_repo:
         participant: Participant | None = pati_repo.get_by_id(
             pati_id,
             include_relations=include_relations,
@@ -132,7 +135,7 @@ def get_participant_by_name(
 ) -> Participant | None:
     """Returns the participant who maintained the change or created the app"""
     try:
-        with ParticipantRepository(get_db()) as repo:
+        with get_session() as session, ParticipantRepository(session) as repo:
             pati = repo.get_by_name(
                 name,
                 participant_type,
@@ -156,7 +159,7 @@ def get_participant_by_display_name(
 ) -> Participant | None:
     """Returns the participant who maintained the change or created the app"""
     try:
-        with ParticipantRepository(get_db()) as repo:
+        with get_session() as session, ParticipantRepository(session) as repo:
             pati = repo.get_by_display_name(
                 display_name,
                 participant_type,

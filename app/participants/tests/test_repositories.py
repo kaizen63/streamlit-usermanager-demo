@@ -23,37 +23,19 @@ from app.participants import (
 )
 
 from ..models import ParticipantModel, ParticipantRelationModel  # noqa: TID252
-from .db import create_db_and_tables, create_db_engine, get_url, is_sqlite
+from .db import (
+    create_db_and_tables,
+    create_db_engine,
+    get_engine,
+    get_session,
+    is_sqlite,
+)
 
-db_engine: str = os.getenv("DB_ENGINE")
-db_url = get_url(db_engine)
-
-engine: Engine = create_db_engine(db_url)
-
-
-def get_session_generator(engine: Engine) -> Generator[Session]:
-    session = Session(bind=engine)
-    try:
-        _ = session.connection()
-    except PendingRollbackError:
-        session.rollback()
-    yield session
-    session.close()
-
-
-def get_session(engine: Engine) -> Session:
-    """
-    Get the database session.
-
-    To be used with:
-    with get_session(engine) as session:
-     ...
-    """
-    return next(get_session_generator(engine))
+engine: Engine = get_engine()
 
 
 def delete_test_data() -> None:
-    with get_session(engine) as session:
+    with get_session() as session:
         if is_sqlite(engine):
             statement = delete(ParticipantRelationModel)
             session.exec(statement)
@@ -192,7 +174,7 @@ def create_test_data(session: Session) -> None:
 
 
 def test_pati_repository_get_by_name() -> None:
-    with ParticipantRepository(get_session(engine)) as repository:
+    with get_session() as session, ParticipantRepository(session) as repository:
         create_test_data(repository.session)
         system: Participant | None = repository.get_by_name(
             name="SYSTEM2", participant_type=ParticipantType.SYSTEM
@@ -234,7 +216,8 @@ def test_pati_repository_get_by_name() -> None:
 
 def test_pati_repository_get_by_name_exc() -> None:
     with (
-        ParticipantRepository(get_session(engine)) as repository,
+        get_session() as session,
+        ParticipantRepository(session) as repository,
         pytest.raises(ValueError),  # noqa: PT011
     ):
         _ = repository.get_by_name(
@@ -243,7 +226,7 @@ def test_pati_repository_get_by_name_exc() -> None:
 
 
 def test_pati_repository_get_by_name_not_found() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repository:
+    with get_session() as session, ParticipantRepository(session) as repository:
         result: Participant | None = repository.get_by_name(
             name="KAI",
             participant_type=ParticipantType.HUMAN,
@@ -253,13 +236,13 @@ def test_pati_repository_get_by_name_not_found() -> None:
 
 
 def test_pati_repository_get_by_id_not_found() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repository:
+    with get_session() as session, ParticipantRepository(session) as repository:
         result: Participant | None = repository.get_by_id(-1)
         assert result is None
 
 
 def test_pati_exists() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         create_test_data(repo.session)
         system: Participant | None = repo.get_by_name(
             name="SYSTEM2", participant_type=ParticipantType.SYSTEM
@@ -290,7 +273,8 @@ def test_pati_exists() -> None:
 
 def test_pati_exists_exceptions() -> None:
     with (
-        ParticipantRepository(session=get_session(engine)) as repo,
+        get_session() as session,
+        ParticipantRepository(session) as repo,
         pytest.raises(ValueError),  # noqa: PT011
     ):
         _ = repo.exists("not_a_valid_column", 1, ParticipantType.SYSTEM)
@@ -329,7 +313,7 @@ def test_pati_repo_create(
     created_by: str,
     expected_result: str,
 ) -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         create = ParticipantCreate(
             name=name,
             display_name=display_name,
@@ -351,7 +335,7 @@ def test_pati_repo_create(
 
 
 def test_pati_repository_add_user() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user = repo.add_user(
             name="poitschlena",
             display_name="Poitschke, Lena",
@@ -375,7 +359,7 @@ def test_pati_repository_add_user() -> None:
 
 
 def test_pati_repository_add_org() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user = repo.add_org(
             name="airbusltd",
             display_name="Airbus Ltd",
@@ -399,7 +383,7 @@ def test_pati_repository_add_org() -> None:
 
 
 def test_pati_repository_add_role() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user = repo.add_role(
             name="unittestrole1",
             display_name="Unit Test Role 1",
@@ -422,7 +406,7 @@ def test_pati_repository_add_role() -> None:
 
 
 def test_pati_repository_get_with_rel() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="USER-1",
             display_name="USER-1",
@@ -519,7 +503,7 @@ def test_pati_repository_get_with_rel() -> None:
 
 
 def test_pati_model_add_relation_role() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1",
             display_name="User, 1",
@@ -560,7 +544,7 @@ def test_pati_model_add_relation_role() -> None:
 
 
 def test_pati_model_add_relation_org() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1o",
             display_name="User, 1o",
@@ -606,7 +590,7 @@ def test_pati_model_add_relation_org() -> None:
 
 
 def test_pati_model_add_reverse_relation_org() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1p",
             display_name="User, 1p",
@@ -652,7 +636,7 @@ def test_pati_model_add_reverse_relation_org() -> None:
 
 
 def test_pati_model_delete_relation() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1a",
             display_name="User, 1a",
@@ -696,7 +680,7 @@ def test_pati_model_delete_relation() -> None:
 
 
 def test_pati_model_delete_all_relations() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1d",
             display_name="User, 1d",
@@ -738,7 +722,7 @@ def test_pati_model_delete_all_relations() -> None:
 
 
 def test_pati_model_delete_reverse_relation() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1drr",
             display_name="User, 1drr",
@@ -766,7 +750,7 @@ def test_pati_model_delete_reverse_relation() -> None:
 
 
 def test_pati_repository_set_state() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1b",
             display_name="User, 1b",
@@ -798,7 +782,7 @@ def test_pati_repository_set_state() -> None:
 
 
 def test_pati_repository_update() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1b",
             display_name="User, 1b",
@@ -841,7 +825,7 @@ def test_pati_repository_update() -> None:
 
 
 def test_pati_terminate() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1b",
             display_name="User, 1b",
@@ -858,7 +842,7 @@ def test_pati_terminate() -> None:
 
 
 def test_pati_activate() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1b",
             display_name="User, 1b",
@@ -876,7 +860,7 @@ def test_pati_activate() -> None:
 
 
 def test_pati_relation_repository_create() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1r",
             display_name="User, 1r",
@@ -920,7 +904,7 @@ def test_pati_relation_repository_create() -> None:
 
 
 def test_pati_relation_repository_exists() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1x",
             display_name="User, 1x",
@@ -970,7 +954,7 @@ def test_pati_relation_repository_exists() -> None:
 
 
 def test_pati_model_get_reverse_relation() -> None:
-    with ParticipantRepository(session=get_session(engine)) as repo:
+    with get_session() as session, ParticipantRepository(session) as repo:
         user_create = ParticipantCreate(
             name="user1grr",
             display_name="User, 1grr",

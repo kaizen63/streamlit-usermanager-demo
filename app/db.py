@@ -3,8 +3,10 @@
 import functools
 import logging
 import os
+import re
 import urllib
 from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any
 
 import streamlit as st
@@ -104,16 +106,6 @@ def create_connection(
     return connection
 
 
-def get_db() -> Session:
-    """Returns the session object from the SQLConnection"""
-    session = Session(bind=get_engine())
-    try:
-        _ = session.connection()
-    except PendingRollbackError:
-        session.rollback()
-    return session
-
-
 def get_engine() -> Engine:
     """Returns the SQLAlchemy engine object from the SQLConnection"""
     if connection := st.session_state.get("db_connection"):
@@ -124,25 +116,17 @@ def get_engine() -> Engine:
     return connection.engine
 
 
-def get_session_generator(engine: Engine) -> Generator[Session]:
-    session = Session(bind=engine)
+@contextmanager
+def get_session() -> Generator[Session]:
+    """Get a session from the engine."""
+    session = Session(bind=get_engine())
     try:
-        _ = session.connection()
+        session.connection()
+        yield session  # Properly manages session
     except PendingRollbackError:
         session.rollback()
-    yield session
-    session.close()
-
-
-def get_session(engine: Engine) -> Session:
-    """
-    Get the db session.
-
-    To be used with:
-    with get_session(engine) as session:
-     ...
-    """
-    return next(get_session_generator(engine))
+    finally:
+        session.close()  # Ensures session cleanup
 
 
 @functools.cache
@@ -238,3 +222,17 @@ def create_db_engine(
         )
 
     return engine
+
+
+def log_session_pool_statistics(prefix: str) -> None:
+    engine = get_engine()
+    connection_pool = engine.pool
+    pool_status = connection_pool.status()
+    match = re.search(r"Current Overflow:\s*(-?\d+)", pool_status)
+    if match:
+        overflow = int(match.group(1))
+        if overflow > 0:
+            logger.warning(
+                f"{prefix} - Connection pool overflow detected: {overflow} connections"
+            )
+    logger.debug(f"{prefix} - Connection pool statistics:  {pool_status}")

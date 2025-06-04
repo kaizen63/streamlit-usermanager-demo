@@ -7,7 +7,7 @@ from typing import Any
 import streamlit as st
 from common import get_policy_enforcer, safe_index
 from config import settings
-from db import get_db
+from db import get_session
 from participant_utilities import (
     check_pati_exists,
     get_org_units,
@@ -66,7 +66,7 @@ def render_users_of_org(
 
     # get the users connected to this org
     selected_options = []
-    with ParticipantRelationRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRelationRepository(session) as repo:
         members_of_org = repo.get_reverse(selected_org.id, ("MEMBER OF",))
         if members_of_org:
             selected_options = [
@@ -96,7 +96,7 @@ def render_orgs_of_org(
 
     # get the users connected to this org
     selected_options = []
-    with ParticipantRelationRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRelationRepository(session) as repo:
         members_of_org = repo.get_reverse(selected_org.id, ("MEMBER OF",))
         if members_of_org:
             selected_options = [
@@ -126,7 +126,7 @@ def render_org_is_member_of(
 
     # get the users connected to this org
     selected_options = []
-    with ParticipantRelationRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRelationRepository(session) as repo:
         all_orgs = get_org_units(only_active=False, include_relations=True)
         options = [o.display_name for o in all_orgs]
         member_of_org = repo.get(selected_org.id, ("MEMBER OF",))
@@ -226,7 +226,7 @@ def render_create_org_unit_form(title: str) -> None:
             st.stop()
 
         org_unit_name = org_unit_name.upper()
-        with ParticipantRepository(get_db()) as pati_repo:
+        with get_session() as session, ParticipantRepository(session) as pati_repo:
             if check_org_unit_exists(pati_repo, org_unit_name, display_name):
                 return
             try:
@@ -345,7 +345,7 @@ def render_update_org_unit_form(selected_org_unit: Participant) -> None:
             st.error("Display name cannot be empty")
             st.stop()
 
-        with ParticipantRepository(get_db()) as pati_repo:
+        with get_session() as session, ParticipantRepository(session) as pati_repo:
             try:
                 roles_changed = save_role_changes(
                     pati_repo, selected_org_unit, selected_roles

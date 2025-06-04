@@ -6,7 +6,7 @@ import time
 import streamlit as st
 from common import check_access, get_policy_enforcer, safe_index
 from config import settings
-from db import get_db
+from db import get_session
 from participant_utilities import (
     check_pati_exists,
     get_participant_by_name,
@@ -61,7 +61,7 @@ def render_participants_granted_this_role(
     selected_role: Participant, participant_type: ParticipantType
 ) -> list[str]:
     """Render the participants the selected role is granted to."""
-    with ParticipantRelationRepository(get_db()) as repo:
+    with get_session() as session, ParticipantRelationRepository(session) as repo:
         users_granted_this_role = repo.get_reverse(selected_role.id, ("GRANT",))
         if users_granted_this_role:
             options = [
@@ -118,7 +118,7 @@ def render_create_role_form(title: str) -> None:
                 st.stop()
 
             role_name = role_name.upper()
-            with ParticipantRepository(get_db()) as pati_repo:
+            with get_session() as session, ParticipantRepository(session) as pati_repo:
                 if check_role_exists(pati_repo, role_name, display_name):
                     return
                 try:
@@ -188,7 +188,7 @@ def render_update_role_form(selected_role: Participant) -> None:
             role_changes["updated_by"] = st.session_state.username
             update = ParticipantUpdate.model_validate(role_changes)
 
-            with ParticipantRepository(get_db()) as pati_repo:
+            with get_session() as session, ParticipantRepository(session) as pati_repo:
                 try:
                     pati_repo.update(selected_role.id, update)
                 except Exception as e:
