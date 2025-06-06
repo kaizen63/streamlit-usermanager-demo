@@ -79,7 +79,7 @@ def render_filter_menu(
 
 def key_function(col: pd.Series) -> pd.Series:
     """Returns the sorting key function based on column type."""
-    return col if pd.api.types.is_datetime64_any_dtype(col) else col.str.lower()
+    return col.str.lower() if pd.api.types.is_string_dtype(col) else col
 
 
 def render_sort_menu(
