@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from common import safe_index
 from config import settings
+from datetime import datetime
 
 LabelVisibilityType: TypeAlias = Literal["visible", "hidden", "collapsed"]
 

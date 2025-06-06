@@ -17,11 +17,11 @@ Exported exceptions:
 
 from sqlalchemy.exc import IntegrityError
 
-from .participant import ParticipantNotFoundError, ParticipantRepository
-from .participant_relation import (
+from .participant_relation_repo import (
     ParticipantRelationNotFoundError,
     ParticipantRelationRepository,
 )
+from .participant_repo import ParticipantNotFoundError, ParticipantRepository
 
 __all__ = [
     "IntegrityError",

@@ -8,7 +8,8 @@ from participants import (
     ParticipantRepository,
     ParticipantType,
 )
-from sqlalchemy import Connection, Engine, text
+from sqlalchemy import text
+from sqlalchemy.engine import Engine, Connection
 from sqlmodel import Session
 
 schema = os.getenv("DB_SCHEMA")

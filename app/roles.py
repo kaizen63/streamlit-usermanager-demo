@@ -29,10 +29,10 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 def render_roles_selectbox() -> Participant | None:
     """Renders the roles select box"""
     show_only_active = st.toggle(label="Show only active", value=True)
-    current_user = st.session_state.current_user["username"]
+    session_username = st.session_state.session_user["username"]
     exclude_roles = (
         {"PUBLIC"}
-        if check_access(current_user, "all_roles", "read")
+        if check_access(session_username, "all_roles", "read")
         else {"PUBLIC", "ADMINISTRATOR"}
     )
 

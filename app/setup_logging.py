@@ -13,6 +13,7 @@ import streamlit as st
 
 # import coloredlogs
 import yaml
+from session_user import SESSION_USER_KEY
 
 
 class LogLevelInvalidError(Exception):
@@ -187,11 +188,11 @@ class MyJSONFormatter(logging.Formatter):
             ).isoformat(),
             "application_name": st.session_state.get("application_name", ""),
         }
-        if st.session_state.get("current_user"):
+        if session_user := st.session_state.get(SESSION_USER_KEY):
             log_data.update(
                 {
-                    "username": st.session_state.current_user["username"],
-                    "user_display_name": st.session_state.current_user["display_name"],
+                    "username": session_user["username"],
+                    "user_display_name": session_user["display_name"],
                 }
             )
 

@@ -4,39 +4,17 @@ import logging
 from collections.abc import Iterable
 
 # from pydantic import BaseModel, Field
-from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
 import casbin
 import streamlit as st
 from casbin.rbac import RoleManager
 from config import settings
+from session_user import SESSION_USER_KEY, SessionUser, get_session_user
 from streamlit_ldap_authenticator import UserInfos
 
 logger = logging.getLogger(settings.LOGGER_NAME)
-
-
-@dataclass
-class CurrentUser:
-    username: str = field(default="")
-    display_name: str = field(default="")
-    email: str | None = field(default=None)
-    title: str | None = field(default=None)
-    roles: set[str] = field(default_factory=set)
-    effective_roles: set[str] = field(default_factory=set)
-    org_units: set[str] = field(default_factory=set)
-
-    def update_session_state(self) -> None:
-        """Updates the session state to reflect the current user"""
-        st.session_state["current_user"] = asdict(self)
-
-    @staticmethod
-    def get_from_session_state() -> Optional["CurrentUser"]:
-        if "current_user" in st.session_state:
-            return CurrentUser(**st.session_state["current_user"])
-        return CurrentUser()
 
 
 class AppRoles(StrEnum):
@@ -79,24 +57,16 @@ def dequote(s: str) -> str:
     return s
 
 
-def get_st_current_user() -> CurrentUser | None:
-    """Get current user from session state"""
-    st_current_user = st.session_state.get("current_user", None)
-    if st_current_user is None:
-        return None
-    return CurrentUser(**st_current_user)
-
-
 def user_is_manager(user: UserInfos | None = None) -> bool:
     """
     Checks if the user is a manager.
 
     If user is None, uses
-    st.session_state.current_user.title
+    st.session_state.session_user.title
     """
     if not user:
-        current_user = CurrentUser.get_from_session_state()
-        title = current_user.title if current_user else None
+        session_user: SessionUser = get_session_user()
+        title = session_user.title if session_user else None
     else:
         title = user.get("title", "")
     if not title:
@@ -144,7 +114,8 @@ def get_policy_enforcer() -> casbin.Enforcer:
 
 
 # choose a short ttl during development to enable us to test the sidebar menu
-@st.cache_data(ttl=settings.POLICY_TTL, show_spinner=False)
+# @st.cache_data(ttl=settings.POLICY_TTL, show_spinner=False)
+@st.cache_data(ttl=0, show_spinner=False)
 def check_access(username: str, object_: str, action: str) -> bool:
     """Check access to an object with streamlit caching"""
     enforcer = get_policy_enforcer()
@@ -154,7 +125,7 @@ def check_access(username: str, object_: str, action: str) -> bool:
 def is_administrator(username: str | None = None) -> bool:
     """Returns True if the current user is administrator by assigned roles (not effective roles)"""
     username = username or st.session_state.get("username", None)
-    if "ADMINISTRATOR" in st.session_state.get("current_user", {}).get("roles", []):
+    if "ADMINISTRATOR" in st.session_state.get(SESSION_USER_KEY, {}).get("roles", []):
         return True
 
     if username and "ADMINISTRATOR" in get_policy_enforcer().get_roles_for_user(
@@ -183,9 +154,9 @@ def filter_list(
     ]
 
 
-def safe_index[T](
-    iterable: Iterable[T], item: T, default: int | None = None
-) -> int | None:
+def safe_index[
+    T
+](iterable: Iterable[T], item: T, default: int | None = None) -> int | None:
     return next((i for i, x in enumerate(iterable) if x == item), default)
 
 
@@ -208,7 +179,7 @@ def get_all_roles(role: str, seen: set[str], role_manager: RoleManager) -> None:
         get_all_roles(sub_role, seen, role_manager)
 
 
-def get_all_roles_of_roles(roles: set[str]) -> set[str]:
+def get_all_roles_of_roles(roles: Iterable[str]) -> set[str]:
     """Get all roles of a role. Drill down into each role to find other role to tole assignments"""
     role_manager = (
         get_role_manager()
@@ -217,3 +188,23 @@ def get_all_roles_of_roles(roles: set[str]) -> set[str]:
     for role in roles:
         get_all_roles(role, all_roles, role_manager)
     return all_roles
+
+
+def get_user_permissions(username: str) -> dict[str, bool]:
+    """Retrieve the user's permissions."""
+    user_permissions = {
+        perm: check_access(username, resource, action)
+        for perm, (resource, action) in {
+            "read_users": ("users", "read"),
+            "write_users": ("users", "write"),
+            "create_users": ("users", "create"),
+            "read_roles": ("roles", "read"),
+            "write_roles": ("roles", "write"),
+            "create_roles": ("roles", "create"),
+            "read_orgs": ("org_units", "read"),
+            "write_orgs": ("org_units", "write"),
+            "create_orgs": ("org_units", "create"),
+        }.items()
+    }
+    logger.debug(f"Permissions of {username}: {user_permissions}")
+    return user_permissions

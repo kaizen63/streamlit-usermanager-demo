@@ -49,8 +49,9 @@ def render_roles(title: str, selected_user: Participant, disabled: bool) -> list
         [
             r
             for r in APP_ROLES
-            if r != "ADMINISTRATOR"
-            or "ADMINISTRATOR" in st.session_state.current_user["effective_roles"]
+            if r != AppRoles.ADMINISTRATOR
+            or AppRoles.ADMINISTRATOR
+            in st.session_state.session_user["effective_roles"]
         ]
     )
     key = "users_roles_multiselect"

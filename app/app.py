@@ -5,10 +5,10 @@ from typing import Any, Literal, TypeAlias
 
 import streamlit as st
 from common import (
-    CurrentUser,
     dequote,
     get_all_roles_of_roles,
     get_policy_enforcer,
+    get_user_permissions,
     is_administrator,
     user_is_manager,
 )
@@ -31,6 +31,7 @@ from participants import (
     ParticipantType,
     ParticipantUpdate,
 )
+from session_user import SessionUser, get_session_user
 from setup_logging import (
     LogLevelInvalidError,
     get_level,
@@ -101,35 +102,37 @@ def update_user_session_state(
     Clears the cache.
 
     Sets the following variables in st.session_state:
-    current_user
+    session_user
     username
     user_display_name
     """
     st.cache_data.clear()
-    current_user: dict[str, Any] = {
-        "username": pati.name,
-        "display_name": pati.display_name,
-        "email": pati.email or user["email"],
-    }
+    session_user: SessionUser = SessionUser(
+        username=pati.name,
+        display_name=pati.display_name,
+        email=pati.email or user["email"],
+    )
     if pati.roles or pati.org_units or pati.proxy_of:
         logger.debug(
             f"update_user_session_state: compute effective roles for: {pati.name}"
         )
         # roles directly assigned or via org
-        current_user["roles"] = pati_repo.compute_effective_roles(pati)
-        current_user["effective_roles"] = get_all_roles_of_roles(current_user["roles"])
+        session_user.roles = pati_repo.compute_effective_roles(pati)
+        session_user.effective_roles = get_all_roles_of_roles(session_user.roles)
     else:
-        current_user["effective_roles"] = set()
-        current_user["roles"] = set()
+        session_user.effective_roles = set()
+        session_user.roles = set()
 
     if pati.org_units:
-        current_user["org_units"] = {ou.name for ou in pati.org_units}
-    st_current_user: CurrentUser = CurrentUser(**current_user)
-    st_current_user.update_session_state()
+        session_user.org_units = {ou.name for ou in pati.org_units}
+
+    session_user.permissions = get_user_permissions(pati.name)
+    session_user.title = user.get("title") or "unknown"
+    session_user.update_session_state()
+
     st.session_state["username"] = pati.name
     st.session_state["user_display_name"] = pati.display_name
     st.session_state["user_email"] = pati.email
-    current_user["title"] = user.get("title") or "unknown"
 
 
 def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
@@ -158,8 +161,8 @@ def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
 
     # logger.debug(f"Checking user {username}")
 
-    current_user = CurrentUser.get_from_session_state()
-    if current_user and username == current_user.username:
+    session_user: SessionUser = get_session_user()
+    if session_user and username == session_user.username:
         return True
 
     with get_session() as session, ParticipantRepository(session) as pati_repo:
@@ -175,14 +178,13 @@ def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
             update_user_session_state(pati_repo, pati, user)
             # We update the database with email, display_name and distinguishedName with the LDAP values
             # if they are different and we did not fake our userid
-            current_user = CurrentUser.get_from_session_state()
-            if current_user.username == user["uid"].upper():
+            if session_user.username == user["uid"].upper():
                 pati = update_user_record(pati_repo, pati, user)
 
             logger.info(
-                f"User {current_user.display_name} ({current_user.username}) logged in."
+                f"User {session_user.display_name} ({session_user.username}) logged in."
             )
-            st_effective_roles = current_user.effective_roles
+            st_effective_roles = session_user.effective_roles
 
             logger.debug(
                 f"Participant {pati.name} has these effective roles in the session state: {', '.join(st_effective_roles)}"
@@ -203,7 +205,7 @@ def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
 
 def initialize_manager_user(user: UserInfos, username: str) -> None:
     """Initialize a manager user session with limited roles."""
-    current_user: CurrentUser = CurrentUser(
+    session_user: SessionUser = SessionUser(
         username=username,
         display_name=user["displayName"],
         email=user["email"],
@@ -213,17 +215,17 @@ def initialize_manager_user(user: UserInfos, username: str) -> None:
         },
         title=user.get("title", ""),
     )
-    current_user.update_session_state()
+    session_user.update_session_state()
     st.session_state.username = username
     st.session_state["must_register"] = True
     logger.info(
-        f"User {current_user.display_name!a} ({current_user.username}) logged in."
+        f"User {session_user.display_name!a} ({session_user.username}) logged in."
     )
 
 
 def clear_user_session() -> None:
     """Clear user session for unauthorized users."""
-    st.session_state["current_user"] = {}
+    st.session_state["session_user"] = {}
     st.session_state.username = ""
     st.session_state["user_email"] = ""
     st.session_state["user_display_name"] = ""

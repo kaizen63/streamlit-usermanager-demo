@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 
 import streamlit as st
-from common import CurrentUser, check_access
+from common import check_access
 from config import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
@@ -22,6 +22,7 @@ from sendgrid.helpers.mail import (
     Mail,
     To,
 )
+from session_user import get_session_user
 from validate_email import validate_email
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -134,7 +135,7 @@ def send_email(
 
 def render_contact_form() -> None:
     # st.write("## Send us a message")
-    current_user = CurrentUser.get_from_session_state()
+    session_user = get_session_user()
     with st.form(key="contact_form"):
         email_to = st.text_input(
             label="Send To",
@@ -145,12 +146,12 @@ def render_contact_form() -> None:
         contact_name = st.text_input(
             label="Your Name:",
             placeholder="John Doe",
-            value=current_user.display_name,
+            value=session_user.display_name,
         )
         contact_email = st.text_input(
             label="Your Email:",
             placeholder="john.doe@acme.com",
-            value=current_user.email,
+            value=session_user.email,
         )
         # st.divider()
         subject = st.text_input("Subject:", max_chars=80)

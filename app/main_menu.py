@@ -5,11 +5,12 @@ import logging
 import homepage
 import streamlit as st
 from about import render_about
-from common import check_access
+from common import get_user_permissions
 from config import settings
 from debug_page import render_debug_page
 from org_units import render_org_units
 from roles import render_roles
+from session_user import SESSION_USER_KEY
 from streamlit_option_menu import option_menu
 from users import render_users
 
@@ -22,18 +23,6 @@ def application_menu_callback(key: str) -> None:
     # logger.debug(f"{key=}, {st.session_state[key]}")
     if key in st.session_state:
         st.query_params["menu"] = st.session_state[key]
-
-
-def get_user_permissions(username: str) -> dict[str, bool]:
-    """Retrieve the user's permissions."""
-    return {
-        perm: check_access(username, resource, action)
-        for perm, (resource, action) in {
-            "read_users": ("users", "read"),
-            "read_roles": ("roles", "read"),
-            "read_orgs": ("org_units", "read"),
-        }.items()
-    }
 
 
 def execute_menu_action(
@@ -89,7 +78,7 @@ def render_main_menu() -> None:
     """Renders the main menu of the application"""
     title = st.query_params.get("title")
 
-    user = st.session_state["current_user"]
+    user = st.session_state[SESSION_USER_KEY]
     username = user["username"]
     effective_roles = user["effective_roles"]
 

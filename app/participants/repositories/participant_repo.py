@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
 from pydantic import ValidationError
 
 if TYPE_CHECKING:
-    from sqlalchemy import Select
+    from sqlalchemy.sql.selectable import Select
 from sqlmodel import Session, delete, or_, select, update
 
 from ..models import (  # noqa: TID252
@@ -31,7 +31,7 @@ from ..models import (  # noqa: TID252
     RelatedParticipant,
 )
 from .base_class import RepositoryBase
-from .participant_relation import (
+from .participant_relation_repo import (
     ParticipantRelationNotFoundError,
     ParticipantRelationRepository,
 )

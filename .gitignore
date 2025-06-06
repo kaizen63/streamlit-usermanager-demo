@@ -319,7 +319,6 @@ msteams.py
 profile.html
 profile.json
 *.xlsx
-*.csv
 *.txt
 *.jsonl
 *.json
@@ -330,7 +329,7 @@ secrets.toml
 **/*.db
 **/.DS_Store
 uv.lock
-.coverage
+
 
 
 

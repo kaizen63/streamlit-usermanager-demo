@@ -3,14 +3,15 @@ from typing import TYPE_CHECKING, Literal
 
 import streamlit as st
 from common import (
-    CurrentUser,
+    AppRoles,
     check_access,
     get_all_roles_of_roles,
     get_policy_enforcer,
-    get_st_current_user,
+    get_user_permissions,
     is_administrator,
 )
 from config import settings
+from session_user import get_session_user
 
 if TYPE_CHECKING:
     from streamlit.connections import SQLConnection
@@ -27,15 +28,28 @@ def role_checkbox_callback(role: str, key: str) -> None:
         return
     # To for check_access to reread.
     check_access.clear()
-    if not (current_user := CurrentUser.get_from_session_state()):
+    if not (session_user := get_session_user()):
         return
     enforcer = get_policy_enforcer()
     if st.session_state[key] is True:
-        current_user.effective_roles.add(role)
-        enforcer.add_role_for_user(current_user.username, role)
+        for related_role in get_all_roles_of_roles({role}):
+            session_user.effective_roles.add(related_role)
+        enforcer.add_role_for_user(session_user.username, role)
+
     else:
-        current_user.effective_roles.discard(role)
-        enforcer.delete_role_for_user(current_user.username, role)
+        if role != AppRoles.ADMINISTRATOR:
+            related_roles = get_all_roles_of_roles({role})
+            for related_role in related_roles:
+                session_user.effective_roles.discard(related_role)
+        else:
+            session_user.effective_roles.discard(role)
+        enforcer.delete_role_for_user(session_user.username, role)
+        # roles = enforcer.get_roles_for_user(session_user.username)
+        # print(roles)
+
+    check_access.clear()
+    session_user.permissions = get_user_permissions(session_user.username)
+    session_user.update_session_state()
     return
 
 
@@ -79,21 +93,21 @@ def render_sidebar(auth: Authenticate) -> None:
             else st.write(f"Welcome {user}")
         )
 
-    current_user = CurrentUser.get_from_session_state()
-    if not current_user:
+    session_user = get_session_user()
+    if not session_user:
         return
     with st.sidebar:
         # st.sidebar.title(f"Welcome {user['displayName']}")
-        # display_user = get_st_current_user()
-        st.write("### Welcome: " + get_st_current_user().display_name)
+        # display_user = get_st_session_user()
+        st.write("### Welcome: " + get_session_user().display_name)
         # render_logout_form()
         st.divider()
 
         # Use a new policy enforcer, so the files are read again. We need to know
         # when a policy has changed. e.g. when the SUPERADMIN is granted and revoked
-        if is_administrator(current_user.username):
-            user_roles: list[str] = sorted(get_all_roles_of_roles(current_user.roles))
-            effective_roles = current_user.effective_roles
+        if is_administrator(session_user.username):
+            user_roles: list[str] = sorted(get_all_roles_of_roles(session_user.roles))
+            effective_roles = session_user.effective_roles
 
             render_user_roles("Your roles:", user_roles, effective_roles)
 
@@ -120,7 +134,7 @@ def signout_callback(event: SignoutEvent) -> Literal["cancel", None]:
         )
         st.session_state["username"] = ""
         st.session_state["user_display_name"] = ""
-        st.session_state["current_user"] = {}
+        st.session_state["session_user"] = {}
         st.session_state["must_register"] = False
         st.session_state["policy_enforcer"] = None
 
