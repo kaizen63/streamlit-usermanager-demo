@@ -1,11 +1,8 @@
-import os
-from collections.abc import Generator
 from typing import Literal, cast
 
 # import os
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.exc import PendingRollbackError
 from sqlmodel import Session, delete
 
 from app.participants import (
@@ -25,7 +22,6 @@ from app.participants import (
 from ..models import ParticipantModel, ParticipantRelationModel  # noqa: TID252
 from .db import (
     create_db_and_tables,
-    create_db_engine,
     get_engine,
     get_session,
     is_sqlite,

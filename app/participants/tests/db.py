@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import PendingRollbackError
 from sqlmodel import Session, SQLModel, create_engine
 
 logger = logging.getLogger(__name__)
