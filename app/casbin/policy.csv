@@ -36,7 +36,7 @@ g, ADMINISTRATOR, USER_ADMINISTRATOR
 p, ROLES_IN_SIDEBAR, roles_in_sidebar, show
 
 # Just in case someone disables us in the database
-#g, einstein, ADMINISTRATOR
-g, EINSTEIN, ROLES_IN_SIDEBAR
+g, einstein, ADMINISTRATOR
+#g, EINSTEIN, ROLES_IN_SIDEBAR
 
 
