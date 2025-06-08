@@ -12,14 +12,14 @@ p, USER_READ, users, read
 g, USER_WRITE, USER_READ
 p, USER_WRITE, users, write
 
-g, ROLE_WRITE, ROLE_READ
-
 p, ROLE_READ, roles, read
+
+g, ROLE_WRITE, ROLE_READ
 p, ROLE_WRITE, roles, write
 
-g, ORG_UNIT_WRITE, ORG_UNIT_READ
-
 p, ORG_UNIT_READ, org_units, read
+
+g, ORG_UNIT_WRITE, ORG_UNIT_READ
 p, ORG_UNIT_WRITE, org_units, write
 
 
@@ -31,10 +31,12 @@ p, USER_ADMINISTRATOR, users, create
 p, USER_ADMINISTRATOR, roles, create
 p, USER_ADMINISTRATOR, org_units, create
 
+g, ADMINISTRATOR, USER_ADMINISTRATOR
 
+p, ROLES_IN_SIDEBAR, roles_in_sidebar, show
 
 # Just in case someone disables us in the database
-g, einstein, ADMINISTRATOR
-
+#g, einstein, ADMINISTRATOR
+g, EINSTEIN, ROLES_IN_SIDEBAR
 
 

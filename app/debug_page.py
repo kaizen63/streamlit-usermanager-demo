@@ -4,8 +4,9 @@ import json
 import logging
 
 import streamlit as st
-from common import check_access, filter_list
+from common import filter_list
 from config import settings
+from user_permissions import check_access
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

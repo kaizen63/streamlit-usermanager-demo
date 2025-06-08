@@ -5,13 +5,13 @@ import logging
 import homepage
 import streamlit as st
 from about import render_about
-from common import get_user_permissions
 from config import settings
 from debug_page import render_debug_page
 from org_units import render_org_units
 from roles import render_roles
 from session_user import SESSION_USER_KEY
 from streamlit_option_menu import option_menu
+from user_permissions import get_user_permissions
 from users import render_users
 
 # from streamlit_extras.bottom_container import bottom

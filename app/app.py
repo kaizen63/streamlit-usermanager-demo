@@ -6,11 +6,6 @@ from typing import Any, Literal, TypeAlias
 import streamlit as st
 from common import (
     dequote,
-    get_all_roles_of_roles,
-    get_policy_enforcer,
-    get_user_permissions,
-    is_administrator,
-    user_is_manager,
 )
 from config import settings
 from db import (
@@ -43,6 +38,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, select
 from streamlit_ldap_authenticator import Authenticate, Connection, UserInfos
+from user_permissions import (
+    get_all_roles_of_roles,
+    get_policy_enforcer,
+    get_user_permissions,
+    user_is_administrator,
+    user_is_manager,
+)
 from users import render_self_registration_form
 
 # from streamlit_extras.bottom_container import bottom
@@ -87,9 +89,7 @@ def update_user_record(
 
 def add_roles_to_policy_enforcer(username: str, roles: Iterable[str]) -> None:
     """Adds the (effective) roles to cabin"""
-    enforcer = st.session_state["policy_enforcer"]
-    if not enforcer:
-        return
+    enforcer = get_policy_enforcer()
     for r in roles:
         logger.debug(f"{username=}: Add role {r} to policy enforcer")
         enforcer.add_role_for_user(username, r)
@@ -119,6 +119,8 @@ def update_user_session_state(
         # roles directly assigned or via org
         session_user.roles = pati_repo.compute_effective_roles(pati)
         session_user.effective_roles = get_all_roles_of_roles(session_user.roles)
+        add_roles_to_policy_enforcer(pati.name, session_user.effective_roles)
+
     else:
         session_user.effective_roles = set()
         session_user.roles = set()
@@ -128,6 +130,7 @@ def update_user_session_state(
 
     session_user.permissions = get_user_permissions(pati.name)
     session_user.title = user.get("title") or "unknown"
+    session_user.casbin_roles = get_policy_enforcer().get_roles_for_user(pati.name)
     session_user.update_session_state()
 
     st.session_state["username"] = pati.name
@@ -153,7 +156,7 @@ def check_user(_conn: Connection | None, user: UserInfos) -> bool | str:
     username = user["uid"].upper()
     logger.debug(f"check_user starts for uid: {username}")
     # We can fake our userid and title if we are admin
-    if is_administrator(username):
+    if user_is_administrator(username):
         if "user" in st.query_params:
             username = st.query_params["user"].upper()
         if "title" in st.query_params:
@@ -257,7 +260,7 @@ def render_login_screen(_auth: Authenticate) -> dict[str, Any]:
     return user
 
 
-def put_settings_into_session_state() -> None:
+def save_settings_into_session_state() -> None:
     """Puts settings and env into session state without showing the secrets"""
     s = settings.model_dump()
     s["DB_PASSWORD"] = "*****"  # noqa: S105
@@ -353,10 +356,6 @@ def setup_database() -> None:
     st.session_state["db_initialized"] = True
 
 
-def init_session_state() -> None:
-    pass
-
-
 def main() -> None:
     load_dotenv(find_dotenv(usecwd=True))
     # use LOG_CONFIG env variable to pass in the name of the file
@@ -366,7 +365,7 @@ def main() -> None:
     configure_main_page()
     setup_database()
 
-    put_settings_into_session_state()
+    save_settings_into_session_state()
     get_policy_enforcer()
     # We disconnect after the script run thru, because we don't want to have long running sessions in the database.
     # But: Callbacks need to reconnect to the database.
@@ -380,7 +379,10 @@ def main() -> None:
         if not user:
             return
 
-        init_session_state()
+        session_user = get_session_user()
+        session_user.permissions = get_user_permissions(session_user.username)
+        session_user.update_session_state()
+
         render_sidebar(auth)
 
         if st.session_state.get("must_register", False) and user_is_manager():

@@ -4,7 +4,7 @@ import logging
 import time
 
 import streamlit as st
-from common import check_access, get_policy_enforcer, safe_index
+from common import safe_index
 from config import settings
 from db import get_session
 from participant_utilities import (
@@ -22,6 +22,7 @@ from participants import (
     ParticipantUpdate,
     is_valid_name,
 )
+from user_permissions import check_access, get_policy_enforcer
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 

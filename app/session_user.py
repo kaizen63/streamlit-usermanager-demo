@@ -35,6 +35,7 @@ class SessionUser:
     title: str | None = field(default=None)
     roles: set[str] = field(default_factory=set)
     effective_roles: set[str] = field(default_factory=set)
+    casbin_roles: set[str] = field(default_factory=set)
     org_units: set[str] = field(default_factory=set)
     permissions: dict[str, bool] = field(default_factory=dict)
 

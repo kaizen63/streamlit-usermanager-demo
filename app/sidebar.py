@@ -2,16 +2,16 @@ import logging
 from typing import TYPE_CHECKING, Literal
 
 import streamlit as st
-from common import (
-    AppRoles,
+from config import settings
+from session_user import get_session_user
+from user_permissions import (
     check_access,
     get_all_roles_of_roles,
     get_policy_enforcer,
     get_user_permissions,
-    is_administrator,
+    sync_enforcer_roles,
+    user_is_administrator,
 )
-from config import settings
-from session_user import get_session_user
 
 if TYPE_CHECKING:
     from streamlit.connections import SQLConnection
@@ -23,31 +23,38 @@ logger = logging.getLogger(settings.LOGGER_NAME)
 
 
 def role_checkbox_callback(role: str, key: str) -> None:
+    """
+    Callback of the role checkboxes
+
+    Updates user's effective roles when a role checkbox is toggled.
+    Clears access cache and updates the policy enforcer accordingly.
+
+    Args:
+        role: The role that was toggled
+        key: The session state key for the checkbox
+
+    Returns:
+        None
+
+    """
     # logger.debug(f"Callback: {role=}, {key=}")
     if key not in st.session_state:
         return
-    # To for check_access to reread.
-    check_access.clear()
-    if not (session_user := get_session_user()):
+
+    session_user = get_session_user()
+    if not session_user.username:
         return
-    enforcer = get_policy_enforcer()
+
     if st.session_state[key] is True:
         for related_role in get_all_roles_of_roles({role}):
             session_user.effective_roles.add(related_role)
-        enforcer.add_role_for_user(session_user.username, role)
-
     else:
-        if role != AppRoles.ADMINISTRATOR:
-            related_roles = get_all_roles_of_roles({role})
-            for related_role in related_roles:
-                session_user.effective_roles.discard(related_role)
-        else:
-            session_user.effective_roles.discard(role)
-        enforcer.delete_role_for_user(session_user.username, role)
-        # roles = enforcer.get_roles_for_user(session_user.username)
-        # print(roles)
+        session_user.effective_roles.discard(role)
 
-    check_access.clear()
+    sync_enforcer_roles(session_user.username, session_user.effective_roles)
+    session_user.casbin_roles = get_policy_enforcer().get_roles_for_user(
+        session_user.username
+    )
     session_user.permissions = get_user_permissions(session_user.username)
     session_user.update_session_state()
     return
@@ -105,7 +112,9 @@ def render_sidebar(auth: Authenticate) -> None:
 
         # Use a new policy enforcer, so the files are read again. We need to know
         # when a policy has changed. e.g. when the SUPERADMIN is granted and revoked
-        if is_administrator(session_user.username):
+        if user_is_administrator(session_user.username) or check_access(
+            session_user.username, "roles_in_sidebar", "show"
+        ):
             user_roles: list[str] = sorted(get_all_roles_of_roles(session_user.roles))
             effective_roles = session_user.effective_roles
 
@@ -120,7 +129,7 @@ def render_sidebar(auth: Authenticate) -> None:
             elif st.query_params.get("debug"):
                 del st.query_params["debug"]
 
-            if is_administrator(st.session_state.username) and st.button(
+            if user_is_administrator(st.session_state.username) and st.button(
                 "Clear caches"
             ):
                 logger.info("Clear caches was requested via user interface.")

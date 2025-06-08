@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 
 import streamlit as st
-from common import check_access
 from config import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
@@ -23,6 +22,7 @@ from sendgrid.helpers.mail import (
     To,
 )
 from session_user import get_session_user
+from user_permissions import check_access
 from validate_email import validate_email
 
 logger = logging.getLogger(settings.LOGGER_NAME)

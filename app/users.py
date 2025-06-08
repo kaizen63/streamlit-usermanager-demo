@@ -7,11 +7,7 @@ from typing import Any, Literal, TypeAlias
 
 import streamlit as st
 from common import (
-    APP_ROLES,
-    AppRoles,
     compare_lists,
-    get_policy_enforcer,
-    is_administrator,
     safe_index,
 )
 from config import settings
@@ -31,6 +27,12 @@ from participants import (
     ParticipantState,
     ParticipantType,
     ParticipantUpdate,
+)
+from user_permissions import (
+    APP_ROLES,
+    AppRoles,
+    get_policy_enforcer,
+    user_is_administrator,
 )
 from validate_email import validate_email
 
@@ -915,7 +917,7 @@ def render_self_registration_form(title: str) -> None:
             return
 
         username = username.upper()
-        if username != login_user["username"] and not is_administrator(
+        if username != login_user["username"] and not user_is_administrator(
             login_user["username"]
         ):
             st.error("You cannot create an account for someone else")

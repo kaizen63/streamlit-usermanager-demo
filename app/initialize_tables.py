@@ -9,7 +9,7 @@ from participants import (
     ParticipantType,
 )
 from sqlalchemy import text
-from sqlalchemy.engine import Engine, Connection
+from sqlalchemy.engine import Connection, Engine
 from sqlmodel import Session
 
 schema = os.getenv("DB_SCHEMA")
