@@ -2,12 +2,6 @@ from pathlib import Path
 
 import streamlit as st
 from __init__ import __maintainer__, __title__, __version__
-from contact import render_contact_form
-
-
-@st.dialog("Contact Us")
-def show_contact_form() -> None:
-    render_contact_form()
 
 
 def render_about() -> None:
