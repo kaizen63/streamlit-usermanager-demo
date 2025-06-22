@@ -16,7 +16,8 @@ from typing import Self
 
 from sqlmodel import Session
 
-logger = logging.getLogger("participants")
+LOGGER_NAME: str = "participants"
+logger = logging.getLogger(LOGGER_NAME)
 
 
 class RepositoryBase:

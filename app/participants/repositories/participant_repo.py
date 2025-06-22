@@ -13,7 +13,10 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
 from pydantic import ValidationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql.functions import coalesce
 from sqlmodel import Session, delete, or_, select, update
 
 from ..models import (  # noqa: TID252
@@ -30,13 +33,13 @@ from ..models import (  # noqa: TID252
     ParticipantUpdate,
     RelatedParticipant,
 )
-from .base_class import RepositoryBase
+from .base_class import LOGGER_NAME, RepositoryBase
 from .participant_relation_repo import (
     ParticipantRelationNotFoundError,
     ParticipantRelationRepository,
 )
 
-logger = logging.getLogger("participants")
+logger = logging.getLogger(LOGGER_NAME)
 
 KeyColumnLiteral: TypeAlias = Literal["id", "name", "display_name"]
 
@@ -331,25 +334,18 @@ class ParticipantRepository(RepositoryBase):
         if participant_type not in [str(m) for m in ParticipantType]:
             exc_msg = f"Wrong participant_type: {participant_type}"
             raise ValueError(exc_msg)
+        active_state_filter = None if only_active else "ACTIVE"
         try:
-            if only_active:
-                statement: Select = (
-                    select(ParticipantModel)
-                    .where(ParticipantModel.participant_type == participant_type)
-                    .where(
-                        or_(
-                            ParticipantModel.state.is_(None),
-                            ParticipantModel.state == "ACTIVE",
-                        ),
-                    )
-                    .order_by(ParticipantModel.display_name)
-                )
-            else:
-                statement = select(ParticipantModel).where(
+            statement: Select = (
+                select(ParticipantModel)
+                .where(
                     ParticipantModel.participant_type == participant_type,
+                    coalesce(active_state_filter, ParticipantModel.state, "ACTIVE")
+                    == "ACTIVE",
                 )
-
-            result: list[ParticipantModel] = self.session.exec(statement).all()
+                .order_by(ParticipantModel.display_name)
+            )
+            result: Sequence[ParticipantModel] = self.session.exec(statement).all()
         except Exception as e:
             logger.exception(f"get_all: - {e}")
             raise

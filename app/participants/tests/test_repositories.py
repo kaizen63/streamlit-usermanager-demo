@@ -2,7 +2,7 @@ from typing import Literal, cast
 
 # import os
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, delete
 
 from app.participants import (
@@ -77,24 +77,25 @@ def create_test_data(session: Session) -> None:
         session.add(system)
 
     user_1 = ParticipantModel(
-        name="POITSCHKKA02",
-        display_name="Poitschke, Kai2",
+        name="TESTUSER1",
+        display_name="Test User 1",
         participant_type="HUMAN",
-        email="kai@acme.com",
+        email="testuser1@acme.com",
         created_by="UNITTEST",
     )
 
     user_2 = ParticipantModel(
-        name="SHULZJOE01",
-        display_name="Schulz, Joerg",
+        name="TESTUSER2",
+        display_name="Test User 2",
         participant_type="HUMAN",
         created_by="UNITTEST",
     )
     user_3 = ParticipantModel(
-        name="FUNKEVO01",
-        display_name="Funke, Volker",
+        name="TESTUSER3",
+        display_name="Test User 3",
         participant_type="HUMAN",
         created_by="UNITTEST",
+        state="TERMINATED",
     )
 
     role_1 = ParticipantModel(
@@ -196,17 +197,17 @@ def test_pati_repository_get_by_name() -> None:
         assert role_public.participant_type == "ROLE"
 
         user_1: Participant | None = repository.get_by_name(
-            name="POITSCHKKA02",
+            name="TESTUSER1",
             participant_type=ParticipantType.HUMAN,
             include_relations=True,
             include_proxies=True,
         )
         assert user_1 is not None
         assert user_1.id > 1
-        assert user_1.name == "POITSCHKKA02"
-        assert user_1.display_name == "Poitschke, Kai2"
+        assert user_1.name == "TESTUSER1"
+        assert user_1.display_name == "Test User 1"
         assert user_1.participant_type == "HUMAN"
-        assert user_1.email == "kai@acme.com"
+        assert user_1.email == "testuser1@acme.com"
         repository.rollback()
 
 
@@ -250,10 +251,10 @@ def test_pati_exists() -> None:
         exists = repo.exists("name", "EDITOR", ParticipantType.ROLE)
         assert exists == "ACTIVE"
 
-        exists = repo.exists("name", "POITSCHKKA02", ParticipantType.HUMAN)
+        exists = repo.exists("name", "TESTUSER1", ParticipantType.HUMAN)
         assert exists == "ACTIVE"
 
-        exists = repo.exists("display_name", "Poitschke, Kai2", ParticipantType.HUMAN)
+        exists = repo.exists("display_name", "Test User 1", ParticipantType.HUMAN)
         assert exists == "ACTIVE"
 
         not_exists = repo.exists("id", -1, ParticipantType.HUMAN)
@@ -933,7 +934,7 @@ def test_pati_relation_repository_exists() -> None:
                     pati1_id=user.id,
                     pati2_id=role.id,
                     relation_type="GRANT",
-                    created_by="POITSCHKKA01",
+                    created_by="TESTUSER1",
                 )
             )
             assert exists is True
@@ -942,7 +943,7 @@ def test_pati_relation_repository_exists() -> None:
                     pati1_id=user.id,
                     pati2_id=role.id,
                     relation_type="MEMBER OF",
-                    created_by="POITSCHKKA01",
+                    created_by="TESTUSER1",
                 )
             )
             assert exists is False
@@ -987,3 +988,21 @@ def test_pati_model_get_reverse_relation() -> None:
             assert rel2[0].participant.state == "ACTIVE"
 
         repo.rollback()
+
+
+def test_get_all() -> None:
+    with get_session() as session, ParticipantRepository(session) as pati_repo:
+        create_test_data(pati_repo.session)
+        all_participants: list[Participant] = pati_repo.get_all(
+            "HUMAN", include_relations=False, only_active=False
+        )
+        assert len(all_participants) == 3
+
+
+def test_get_all_active() -> None:
+    with get_session() as session, ParticipantRepository(session) as pati_repo:
+        create_test_data(pati_repo.session)
+        all_participants: list[Participant] = pati_repo.get_all(
+            "HUMAN", include_relations=False, only_active=True
+        )
+        assert len(all_participants) == 2

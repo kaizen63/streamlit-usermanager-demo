@@ -10,7 +10,10 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sqlalchemy import Select
+    from collections.abc import Sequence
+
+    from sqlalchemy.sql.selectable import Select
+
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, or_, select
@@ -22,12 +25,16 @@ from ..models import (  # noqa: TID252
     ParticipantRelationModel,
     RelatedParticipant,
 )
-from .base_class import RepositoryBase
+from .base_class import LOGGER_NAME, RepositoryBase
 
+if TYPE_CHECKING:
+    ParticipantModel2 = ParticipantModel  # for mypy
+else:
+    ParticipantModel2 = aliased(ParticipantModel)  # for runtime use
 # from sqlalchemy.dialects import sqlite
 
 
-logger = logging.getLogger("participants")
+logger = logging.getLogger(LOGGER_NAME)
 
 
 class ParticipantRelationNotFoundError(Exception):
@@ -89,8 +96,6 @@ class ParticipantRelationRepository(RepositoryBase):
         """
         # Define an aliases for the related table
         # DO NOT USE 2 ALIASES -> BUG IN SQLALCHEMY
-        # ParticipantModel1 = aliased(ParticipantModel)
-        ParticipantModel2 = aliased(ParticipantModel)  # noqa: N806
         try:
             statement: Select = (
                 select(
@@ -118,7 +123,13 @@ class ParticipantRelationRepository(RepositoryBase):
             )
             # sql_text = str(statement.compile(dialect=sqlite.dialect()))
 
-            results = self.session.exec(statement).all()
+            results: Sequence[
+                tuple[
+                    ParticipantRelationModel,
+                    ParticipantModel,
+                    ParticipantModel,
+                ]
+            ] = self.session.exec(statement).all()
         except NoResultFound:
             return []
 
@@ -192,7 +203,9 @@ class ParticipantRelationRepository(RepositoryBase):
             )
             # sql_text = str(statement.compile(dialect=sqlite.dialect()))
 
-            results = self.session.exec(statement).all()
+            results: Sequence[
+                tuple[ParticipantRelationModel, ParticipantModel, ParticipantModel]
+            ] = self.session.exec(statement).all()
         except NoResultFound:
             return []
 
